@@ -1,0 +1,8 @@
+# Normalise to LF in the repository. The Makefile and Dockerfile are consumed
+# by Linux tooling in CI and in the deployment image, where CRLF breaks them.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.onnx binary
+*.pdf binary
