@@ -1,0 +1,17 @@
+[
+  {
+    "detector_id": "rung1.mrz_checkdigits",
+    "rung": 1,
+    "result": "NOT_APPLICABLE",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "A Bhutanese citizenship identity card has no machine-readable strip, so this check does not apply to it. Nothing about this document was confirmed by this check."
+    ],
+    "standard_ref": "ICAO Doc 9303 Part 3 s.4.2.2",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "1125702c16172e528c1ef8ca05829e2f3b175ecee39aaa0f65b86dc370e29e4c"
+  }
+]

@@ -1,0 +1,17 @@
+# Golden case: td3-ind-specimen
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. The detector does not exist yet; until it is registered this case is
+# reported as pending rather than passing.
+
+[case]
+id = "td3-ind-specimen"
+description = "A synthetic Indian passport strip with correct check digits."
+detector = "rung1.mrz_checkdigits"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Hand-authored 2026-09-06 from the ICAO Doc 9303 Part 3 TD3 field layout. Document number Z0000001 and the name SPECIMEN TEST CASE are deliberately not issuable."
+sha256 = "3c8a4d3723fd13e22bfb4ba285b47a34ea4e002c26adb24305fb52be3af85ee9"

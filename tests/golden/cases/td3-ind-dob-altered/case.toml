@@ -1,0 +1,17 @@
+# Golden case: td3-ind-dob-altered
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. The detector does not exist yet; until it is registered this case is
+# reported as pending rather than passing.
+
+[case]
+id = "td3-ind-dob-altered"
+description = "The same synthetic passport with the date of birth changed in place."
+detector = "rung1.mrz_checkdigits"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Derived from td3-ind-specimen by changing the coded date of birth from 900101 to 900102 and leaving every printed check digit untouched. The date check digit should read 2 and reads 1; the whole-strip check digit should read 7 and reads 0. Both recomputed independently on 2026-09-06."
+sha256 = "1dab1782bf19bb17a5813a2bb128d3857b947baf907806d9a84fa1020f3fec77"

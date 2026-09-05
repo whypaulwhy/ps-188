@@ -1,0 +1,57 @@
+{
+  "licence": "Published specimen from ICAO Doc 9303 Part 3, for the fictional state Utopia (UTO). Reproduced as a test vector. Additional fields authored for this repository, CC0-1.0.",
+  "provenance": "Check digits computed on 2026-09-06 from the ICAO Doc 9303 Part 3 weighting 7-3-1, independently of any implementation in this repository. The first five entries reproduce the published Utopia specimen exactly.",
+  "standard_ref": "ICAO Doc 9303 Part 3 s.4.2.2",
+  "vectors": [
+    {
+      "field": "L898902C3",
+      "check_digit": "6",
+      "note": "ICAO specimen, document number"
+    },
+    {
+      "field": "740812",
+      "check_digit": "2",
+      "note": "ICAO specimen, date of birth"
+    },
+    {
+      "field": "120415",
+      "check_digit": "9",
+      "note": "ICAO specimen, expiry"
+    },
+    {
+      "field": "ZE184226B<<<<<",
+      "check_digit": "1",
+      "note": "ICAO specimen, personal number"
+    },
+    {
+      "field": "L898902C3674081221204159ZE184226B<<<<<1",
+      "check_digit": "0",
+      "note": "ICAO specimen, composite"
+    },
+    {
+      "field": "<<<<<<<<<<<<<<",
+      "check_digit": "0",
+      "note": "all filler characters"
+    },
+    {
+      "field": "900101",
+      "check_digit": "1",
+      "note": "synthetic date of birth"
+    },
+    {
+      "field": "900102",
+      "check_digit": "2",
+      "note": "the altered date in td3-ind-dob-altered"
+    },
+    {
+      "field": "350101",
+      "check_digit": "4",
+      "note": "synthetic expiry"
+    },
+    {
+      "field": "Z0000001<",
+      "check_digit": "8",
+      "note": "synthetic document number"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "licence": "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number.",
+  "provenance": "Computed on 2026-09-06 from the published Verhoeff d, p and inverse tables, independently of any implementation in this repository. The four-digit entries are the widely published worked example. Every twelve-digit number begins with 0, which UIDAI never issues, so none of them can be a real Aadhaar number while still exercising the arithmetic.",
+  "standard_ref": "Verhoeff (1969), as used by UIDAI for the twelfth digit",
+  "valid": [
+    "2363",
+    "012345678906",
+    "098765432106",
+    "000000000019"
+  ],
+  "invalid": [
+    "2364",
+    "012345678900",
+    "098765432100",
+    "000000000010"
+  ]
+}

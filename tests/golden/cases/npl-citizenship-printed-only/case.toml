@@ -1,0 +1,17 @@
+# Golden case: npl-citizenship-printed-only
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. The detector does not exist yet; until it is registered this case is
+# reported as pending rather than passing.
+
+[case]
+id = "npl-citizenship-printed-only"
+description = "A Nepali citizenship certificate. No strip, no signature, nothing to verify."
+detector = "rung1.mrz_checkdigits"
+phase = 5
+input = "input.fields.json"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Hand-authored 2026-09-06 as a transcription of the printed fields a Nepali citizenship certificate carries. Every value is the literal string SPECIMEN or a zero-filled placeholder."
+sha256 = "fa01286e2710519993712585b81a4b2edb990635978934ffc80e5cfc967d2e7c"

@@ -1,0 +1,17 @@
+# Golden case: btn-cid-printed-only
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. The detector does not exist yet; until it is registered this case is
+# reported as pending rather than passing.
+
+[case]
+id = "btn-cid-printed-only"
+description = "A Bhutanese citizenship identity card. No strip, no signature."
+detector = "rung1.mrz_checkdigits"
+phase = 5
+input = "input.fields.json"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Hand-authored 2026-09-06 as a transcription of the printed fields a Bhutanese citizenship identity card carries. Every value is the literal string SPECIMEN or a zero-filled placeholder."
+sha256 = "1125702c16172e528c1ef8ca05829e2f3b175ecee39aaa0f65b86dc370e29e4c"

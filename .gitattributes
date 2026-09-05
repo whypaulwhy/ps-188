@@ -6,3 +6,7 @@
 *.jpeg binary
 *.onnx binary
 *.pdf binary
+
+# Golden fixture inputs are hashed and their digests are committed. Never let
+# any filter touch their bytes.
+tests/golden/cases/**/input.* -text

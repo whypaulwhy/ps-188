@@ -1,0 +1,18 @@
+[
+  {
+    "detector_id": "rung1.mrz_checkdigits",
+    "rung": 1,
+    "result": "FAIL",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "The date of birth in the machine-readable strip does not match the verification number printed next to it.",
+      "The strip's overall verification number does not match either, which is what a single altered field normally looks like."
+    ],
+    "standard_ref": "ICAO Doc 9303 Part 3 s.4.2.2",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "1dab1782bf19bb17a5813a2bb128d3857b947baf907806d9a84fa1020f3fec77"
+  }
+]

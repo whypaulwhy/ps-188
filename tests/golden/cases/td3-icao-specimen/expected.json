@@ -1,0 +1,17 @@
+[
+  {
+    "detector_id": "rung1.mrz_checkdigits",
+    "rung": 1,
+    "result": "PASS",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "The machine-readable strip at the bottom of this passport is self-consistent: every built-in verification number matches the details printed beside it."
+    ],
+    "standard_ref": "ICAO Doc 9303 Part 3 s.4.2.2",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "207e5abcc4befcb19dc1775f5e220e424f718e1f5f7ec53562d2a3c92efa7083"
+  }
+]

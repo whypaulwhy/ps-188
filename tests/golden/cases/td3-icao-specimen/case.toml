@@ -1,0 +1,17 @@
+# Golden case: td3-icao-specimen
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. The detector does not exist yet; until it is registered this case is
+# reported as pending rather than passing.
+
+[case]
+id = "td3-icao-specimen"
+description = "The published ICAO specimen passport. Every check digit is correct."
+detector = "rung1.mrz_checkdigits"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Published specimen from ICAO Doc 9303 Part 3, for the fictional state Utopia (UTO). Reproduced as a test vector."
+provenance = "ICAO Doc 9303 Part 3, worked specimen for the fictional state Utopia. All five check digits independently recomputed on 2026-09-06 and found to agree."
+sha256 = "207e5abcc4befcb19dc1775f5e220e424f718e1f5f7ec53562d2a3c92efa7083"

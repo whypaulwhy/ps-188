@@ -28,19 +28,30 @@ there is a test that says so.
 
 ---
 
-## Phase 1 — Scope, threat model and golden fixtures
+## Phase 1 — Scope, threat model and golden fixtures ✅
 
 Decide what is actually in scope before writing anything that looks at pixels.
 
-- Which document types the system accepts, and which it explicitly refuses to
-  judge. Refusing is a valid answer.
-- `docs/threat-model.md` filled out per document type: what an attacker
-  realistically does, and which rung would catch it.
-- A committed fixture corpus of specimen documents, none of them real. Every
-  fixture carries a licence note and a provenance line.
-- The golden test harness in `tests/golden/`: fixture in, exact `Evidence` out.
+- `docs/scope.md`: eleven accepted document types, the refused list, and the
+  "what this system does not do" statement.
+- `docs/threat-model.md`: per document type, the realistic attacks and which
+  rung answers them; the attack-to-fixture map; the cost of a false rejection.
+- Fixture corpus in `tests/golden/`: six detector cases and two standards
+  vector files, all synthetic or published specimens, each with a licence note,
+  a provenance line and a committed digest.
+- The golden harness: fixture in, exact `Evidence` out, with officer-facing
+  wording pinned and only `runtime_ms` and `model_version` excluded from
+  comparison.
 
-**Exit criteria.** A written answer to "what does this system not do".
+**Exit criterion met.** `docs/scope.md` answers "what does this system not do"
+in ten numbered points.
+
+**The finding that came out of it.** Scope was set to the real SSB mandate —
+the India–Nepal and India–Bhutan borders. Only two of the eleven accepted
+document types can ever reach `CLEARED`, and both are Indian. Nepali and
+Bhutanese documents carry nothing a machine can verify, so `MANUAL_REVIEW` is
+the correct outcome for most crossings. On these borders this system is triage
+and evidence, not clearance. That reframes what phase 6 has to measure.
 
 ---
 
@@ -54,7 +65,10 @@ The deterministic groundwork. No inference anywhere in this phase.
 
 **Exit criteria.** Property-based tests via hypothesis for the check digits and
 Verhoeff. Both are pure arithmetic over strings and must be correct for every
-input, not for the examples that came to mind.
+input, not for the examples that came to mind. The phase-1 vectors in
+`tests/golden/vectors/` were derived from the standards independently of any
+implementation, so they are a real check on this phase rather than a
+restatement of it.
 
 ---
 

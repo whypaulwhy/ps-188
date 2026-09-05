@@ -1,0 +1,17 @@
+# Golden case: td3-ind-strip-unreadable
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. The detector does not exist yet; until it is registered this case is
+# reported as pending rather than passing.
+
+[case]
+id = "td3-ind-strip-unreadable"
+description = "A partially captured strip. Not a forgery signal; a scan quality problem."
+detector = "rung1.mrz_checkdigits"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Derived from td3-ind-specimen by truncating the second line to 26 of its 44 characters, simulating a strip that OCR could not read in full."
+sha256 = "b1bc846eb5434c43735c492f884bce1320c0e4d2d9b125a2eb605fde041c767b"

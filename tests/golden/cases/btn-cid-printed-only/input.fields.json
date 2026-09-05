@@ -1,0 +1,17 @@
+{
+  "_note": "SPECIMEN. Synthetic printed-field transcription. Not a real card.",
+  "document_type": "btn_citizenship_identity_card",
+  "cid_number": "00000000000",
+  "full_name": "SPECIMEN TEST CASE",
+  "date_of_birth": "1990-01-01",
+  "sex": "M",
+  "permanent_address": {
+    "dzongkhag": "SPECIMEN",
+    "gewog": "SPECIMEN",
+    "village": "SPECIMEN"
+  },
+  "issue_date": "2020-01-01",
+  "expiry_date": "2030-01-01",
+  "machine_readable_zone": null,
+  "digital_signature": null
+}
