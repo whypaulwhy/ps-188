@@ -1,0 +1,119 @@
+[project]
+name = "sentinelid"
+version = "0.0.0"
+description = "AI-based fake identity and document screening for SSB border checkpoints."
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+
+# Pydantic is a runtime dependency, not a development one: the evidence
+# contract in core/contracts is built from Pydantic v2 models, so the package
+# cannot be imported without it. Nothing else is a runtime dependency yet.
+dependencies = [
+    "pydantic>=2.9,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.112",
+    "ruff>=0.7",
+    "mypy>=1.11",
+    "import-linter>=2.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "core",
+    "detectors",
+    "extraction",
+    "ledger",
+    "api",
+    "db",
+    "explain",
+    "ui",
+    "datagen",
+    "eval",
+]
+
+# ----------------------------------------------------------------------------
+# ruff
+# ----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "A",    # shadowed builtins
+    "ANN",  # missing annotations
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "D",    # docstrings
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # import sorting
+    "N",    # naming
+    "PTH",  # use pathlib
+    "RUF",
+    "S",    # bandit
+    "SIM",
+    "TID",  # tidy imports
+    "UP",   # pyupgrade
+    "W",    # pycodestyle warnings
+]
+ignore = [
+    # Detector.id is named by the contract in CLAUDE.md. Shadowing the builtin
+    # on a class attribute is deliberate and harmless.
+    "A003",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert; that is the point.
+"tests/**" = ["S101"]
+
+# ----------------------------------------------------------------------------
+# mypy. `make types` runs this in strict mode over core/ only, per CLAUDE.md.
+# ----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+# ----------------------------------------------------------------------------
+# pytest and coverage
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=core",
+    "--cov-branch",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.run]
+# CLAUDE.md requires 100% branch coverage of core/. It is pure functions.
+source = ["core"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    # Phase-0 stubs. The line is unreachable by design until the module is
+    # implemented; the def above it is still required to be imported.
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

@@ -1,0 +1,33 @@
+# SENTINEL ID local deployment.
+#
+# One service. There is no database container: the system uses SQLite in WAL
+# mode on a mounted volume, which is what a checkpoint box actually runs.
+#
+# Phase 0 has nothing to serve, so this file defines the environment and the
+# volumes and stops there. Phase 9 adds the port mapping and the healthcheck
+# once api/ exists.
+
+services:
+  sentinelid:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: sentinelid:dev
+    # No ports published yet: api/ is a stub until phase 9.
+    environment:
+      # Per-deployment salt for hashing document numbers. Never committed,
+      # never logged, never shared between deployments. Rule 3 of CLAUDE.md.
+      SENTINELID_HASH_SALT: ${SENTINELID_HASH_SALT:?set a per-deployment salt}
+      SENTINELID_DB_URL: sqlite+pysqlite:////var/lib/sentinelid/sentinelid.db
+    volumes:
+      # Case records and the transparency log. Survives image rebuilds.
+      - sentinelid-data:/var/lib/sentinelid
+      # Model artefacts, mounted read-only and pinned by digest at deploy time.
+      - ./models:/opt/sentinelid/models:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+volumes:
+  sentinelid-data:
