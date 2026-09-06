@@ -10,6 +10,13 @@ persist one.
 
 from __future__ import annotations
 
+from core.privacy.biometrics import (
+    BiometricKey,
+    BiometricKeyError,
+    EncryptedEmbedding,
+    decrypt_embedding,
+    encrypt_embedding,
+)
 from core.privacy.hashing import (
     DIGEST_LENGTH,
     MINIMUM_KEY_BYTES,
@@ -30,12 +37,17 @@ __all__ = [
     "DIGEST_LENGTH",
     "MINIMUM_KEY_BYTES",
     "ArtefactCategory",
+    "BiometricKey",
+    "BiometricKeyError",
     "DeploymentKey",
+    "EncryptedEmbedding",
     "IdentifierKind",
     "RawIdentifier",
     "RetentionPolicy",
+    "decrypt_embedding",
     "deletion_due_at",
     "digests_match",
+    "encrypt_embedding",
     "hash_document_number",
     "is_due_for_deletion",
     "mask_aadhaar",

@@ -140,8 +140,8 @@ are in the corpus.
 | Expired but genuine and correctly signed | 1 | `td3-expiry-expired` ✅ |
 | Cloned template with invented data | 1 and 2 | none yet, phase 6 |
 | Print-and-rephotograph of a real document | 2 | none yet, phase 6 |
-| Screen replay against the live capture | 2 | none yet, phase 7 |
-| Genuine document, wrong bearer | 2 | none yet, phase 7 |
+| Screen replay against the live capture | 2 | none — `pad_liveness` abstains, for the same two reasons |
+| Genuine document, wrong bearer | 2 | none — `face_match` abstains: no model, and no lawful face corpus to validate against |
 | Unrecognised document type | — | none; no detector applies, `MANUAL_REVIEW` by default |
 
 Ten attacks have committed fixtures. The rest are named here so the gap is

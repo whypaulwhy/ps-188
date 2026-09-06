@@ -83,7 +83,7 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 4 | Rung 0, cryptographic verification | ◐ partial |
 | 5 | Rung 1, deterministic detectors | ◐ partial |
 | 6 | Synthetic data, extraction, evaluation, tamper detection | ✅ |
-| 7 | Rung 2, biometrics | ☐ |
+| 7 | Rung 2, biometrics | ◐ partial |
 | 8 | Rung 3, contextual advisories | ☐ |
 | 9 | API, database, ledger, officer console | ☐ |
 
@@ -111,6 +111,11 @@ that has run and produced a committed report.
   than guessing and failing a genuine document.
 - **No chip reading.** Blocked on hardware, and every case says so rather than
   omitting the check.
+- **No face matching.** The storage side is done — embeddings are encrypted at
+  rest under their own key, with a retention window the code enforces and a test
+  that fails if any file calls an embedding anonymous. The matching side has no
+  model weights and, more importantly, no lawfully obtained face corpus to
+  validate against. Both detectors abstain and say why.
 
 ## Running it
 

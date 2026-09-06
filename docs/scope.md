@@ -69,9 +69,11 @@ basis for.
 This is the phase-1 exit criterion, and the section to read first if you are
 deciding whether to trust it.
 
-1. **It does not establish who a person is.** It examines a document, and from
-   phase 7 it compares the document portrait against a live capture. Neither
-   is proof of identity.
+1. **It does not establish who a person is.** It examines a document. It does
+   **not** currently compare the portrait against the person presenting it:
+   face matching is built but has no model and no lawful face corpus to
+   validate against, so it abstains on every crossing and says so. Even when it
+   works, a face comparison is not proof of identity.
 2. **It does not clear anyone without cryptographic proof of issuance.** No
    volume of clean checks adds up to a clearance. Both the trust ladder and the
    `Verdict` contract refuse it.
@@ -103,8 +105,13 @@ deciding whether to trust it.
 Written without access to the operational environment. Each affects scope and
 should be confirmed before the remaining Rung 0 work can proceed:
 
-- **A real Aadhaar Secure QR specimen, and the UIDAI certificate.** This is now
-  the single blocking item. Without it the Aadhaar detector cannot be written,
+- **A decision on face data, before any face matching is validated.** No face
+  corpus may be used without a documented lawful basis and a consent record.
+  This is recorded now, unresolved, so that it is decided deliberately rather
+  than by whoever first needs a test to pass. It governs both `face_match` and
+  `pad_liveness`, and it is a question about people rather than about data.
+- **A real Aadhaar Secure QR specimen, and the UIDAI certificate.** This is
+  the single blocking item for clearance. Without it the Aadhaar detector cannot be written,
   and one of the two document types in this table that can reach `CLEARED` does
   not work. See `detectors/rung0_crypto/aadhaar_secure_qr.py` for exactly what
   is needed.

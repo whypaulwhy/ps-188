@@ -342,14 +342,51 @@ misses is reported as unread, which is the safe direction.
 
 ---
 
-## Phase 7 — Rung 2, biometrics
+## Phase 7 — Rung 2, biometrics (partial)
 
-- `face_match.py`: document portrait against live capture.
-- `pad_liveness.py`: presentation attack detection.
+### Exit criteria met, in full
 
-**Exit criteria.** Encryption at rest for embeddings and a retention window
-that is enforced by code. Nothing in this repository describes a face embedding
-as anonymous, irreversible or one-way, because it is none of those things.
+- `core/privacy/biometrics.py`: an embedding leaves the module only as
+  `EncryptedEmbedding`, AES-256-GCM under a key held **separately from the
+  identifier hashing key** — different sensitivity, different retention,
+  different reasons to rotate, so compromising one must not compromise the
+  other. There is no code path that persists a vector in the clear, because
+  nothing accepts one.
+- `created_at`, `model_version` and `dimension` are bound into the ciphertext
+  as authenticated data. Editing the timestamp to extend a retention window
+  breaks decryption, so the cheapest attack on retention — changing one field
+  in a database row — does not work.
+- Retention is enforced in code: `EncryptedEmbedding.is_due_for_deletion` reads
+  the window from a `RetentionPolicy` that already refuses to construct without
+  an explicit answer for face embeddings.
+- **A repository-wide scan** fails on any sentence describing an embedding with
+  a word that is not true of it; the words are listed in the test rather than
+  here. Same enforcement pattern as the Aadhaar-shaped-number scan, applied to
+  rule 4 — and it caught three of this project's own sentences, two in code and
+  one in this file.
+
+### What does not work, and why the second reason is the harder one
+
+`face_match.py` and `pad_liveness.py` are registered and report `INCONCLUSIVE`
+on every document. Two blockers:
+
+1. **No model weights.** InsightFace `buffalo_l` is a large download and none is
+   present. ONNX Runtime is installed, so the runtime is there; the model is
+   not. Identical to TruFor.
+2. **No faces, deliberately.** `datagen` draws a flat placeholder panel rather
+   than a portrait, because producing images of people who do not exist in
+   order to test a border system is a line this project does not cross. So even
+   with weights there is nothing here to validate against.
+
+The second is not solved by a download. Validating face matching needs a corpus
+of real faces, and obtaining one is a question of lawful basis and consent
+before it is a question of data. The constraint is recorded in `docs/scope.md`
+so the decision gets made deliberately rather than by whoever first needs a test
+to pass.
+
+Both detectors report on **every** document rather than declining when there is
+no live capture, so that a crossing where the bearer was never checked reads
+differently from one where they were.
 
 ---
 
