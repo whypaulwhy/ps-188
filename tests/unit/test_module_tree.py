@@ -54,6 +54,10 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "core.trust.policy",
         "detectors",
         "detectors.base",
+        "detectors.rung0_crypto.digilocker_xml_sig",
+        "detectors.rung0_crypto.pdf_pkcs7",
+        "detectors.rung0_crypto.trust_store",
+        "detectors.rung0_crypto.verification",
     }
 )
 """The modules phase 0 implements for real. Everything else must still be a stub."""

@@ -29,6 +29,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
+from cryptography import x509
+
 from core.contracts import (
     Artefact,
     DocumentType,
@@ -38,9 +40,11 @@ from core.contracts import (
     TextZone,
     ZoneName,
 )
+from detectors.rung0_crypto.trust_store import SignatureAlgorithm, TrustAnchor, TrustStore
 
 HERE: Final[Path] = Path(__file__).parent
 CASES_DIR: Final[Path] = HERE / "cases"
+ANCHORS_DIR: Final[Path] = HERE / "anchors"
 VECTORS_DIR: Final[Path] = HERE / "vectors"
 
 FIXTURE_CAPTURED_AT: Final[datetime.datetime] = datetime.datetime(
@@ -82,7 +86,36 @@ class GoldenCase:
     licence: str
     provenance: str
     declared_sha256: str
+    anchors: tuple[str, ...]
     expected: tuple[Evidence, ...]
+
+    def trust_store(self) -> TrustStore:
+        """Build the trust store this case is screened against.
+
+        Anchors are named in `case.toml` and loaded from `anchors/`. A case
+        that names none is screened by a deployment holding no issuer keys,
+        which is a legitimate and important state to test.
+        """
+        loaded: list[TrustAnchor] = []
+        for name in self.anchors:
+            der = (ANCHORS_DIR / name).read_bytes()
+            certificate = x509.load_der_x509_certificate(der)
+            loaded.append(
+                TrustAnchor(
+                    issuer_id=name.removesuffix(".der"),
+                    public_key=certificate.public_key(),
+                    permitted_algorithms=frozenset(
+                        {
+                            SignatureAlgorithm.RSA_PKCS1V15_SHA256,
+                            SignatureAlgorithm.RSA_PSS_SHA256,
+                        }
+                    ),
+                    not_before=certificate.not_valid_before_utc,
+                    not_after=certificate.not_valid_after_utc,
+                    certificate_der=der,
+                )
+            )
+        return TrustStore(loaded)
 
     def actual_sha256(self) -> str:
         """Return the digest of the fixture file as it exists on disk."""
@@ -103,6 +136,7 @@ class GoldenCase:
         digest = hashlib.sha256(data).hexdigest()
         suffixes = "".join(self.input_path.suffixes)
 
+        zones: tuple[TextZone, ...] = ()
         if suffixes.endswith(".mrz.txt"):
             media_type = "text/plain"
             zones = (
@@ -112,7 +146,7 @@ class GoldenCase:
                     complete=True,
                 ),
             )
-        else:
+        elif suffixes.endswith(".fields.json"):
             media_type = "application/json"
             zones = (
                 TextZone(
@@ -121,6 +155,10 @@ class GoldenCase:
                     complete=True,
                 ),
             )
+        elif suffixes.endswith(".xml"):
+            media_type = "application/xml"
+        else:
+            media_type = "application/pdf"
 
         return Subject(
             provenance=Provenance(
@@ -202,6 +240,7 @@ def load_case(directory: Path) -> GoldenCase:
         licence=fixture["licence"],
         provenance=fixture["provenance"],
         declared_sha256=fixture["sha256"],
+        anchors=tuple(case.get("anchors", ())),
         expected=tuple(Evidence(**record) for record in expected_records),
     )
 

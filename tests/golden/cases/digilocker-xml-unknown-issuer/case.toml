@@ -1,0 +1,18 @@
+# Golden case: digilocker-xml-unknown-issuer
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "digilocker-xml-unknown-issuer"
+description = "A well-formed signature from an authority this checkpoint does not hold."
+detector = "rung0.digilocker_xml_sig"
+declared_type = "DIGILOCKER_DOCUMENT"
+phase = 4
+input = "input.xml"
+anchors = ["test-issuer.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Signed on 2026-09-06 with a second ephemeral RSA-2048 key, also not retained, whose certificate is deliberately not committed as an anchor."
+sha256 = "9bba2e2a7f4130df045e9cde53212361325dc3d8bc4f8d31042a051647b422f1"

@@ -1,0 +1,18 @@
+# Golden case: pdf-signature-tampered
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "pdf-signature-tampered"
+description = "The same PDF with a byte altered inside the signed range."
+detector = "rung0.pdf_pkcs7"
+declared_type = "DIGILOCKER_DOCUMENT"
+phase = 4
+input = "input.pdf"
+anchors = ["test-issuer.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Derived from pdf-signature-valid by changing one page dimension after signing. The signature object remains well formed, which is exactly why the detector requires the document to be intact as well as the signature to be valid."
+sha256 = "75a30ec8d6b8340a64200d5bd96842732639415272dc1a921a18e37f7e2d6e9e"

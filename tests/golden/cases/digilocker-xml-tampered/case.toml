@@ -1,0 +1,18 @@
+# Golden case: digilocker-xml-tampered
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "digilocker-xml-tampered"
+description = "The same document with a field altered after signing."
+detector = "rung0.digilocker_xml_sig"
+declared_type = "DIGILOCKER_DOCUMENT"
+phase = 4
+input = "input.xml"
+anchors = ["test-issuer.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Derived from digilocker-xml-valid by changing the name field after signing, leaving the signature block untouched."
+sha256 = "1391f12b254b1336d2d293f65b21da86f0aa0d92684897484d3ef201b8acebb6"

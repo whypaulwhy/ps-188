@@ -1,0 +1,17 @@
+[
+  {
+    "detector_id": "rung0.pdf_pkcs7",
+    "rung": 0,
+    "result": "NO_PROOF_PRESENT",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "This document is signed by an authority this checkpoint does not recognise, so nothing about it was confirmed."
+    ],
+    "standard_ref": "ISO 32000-2 s.12.8.3.3 (PKCS#7 / CMS), RFC 5652",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "798e4c292586cb14f6ae5158bd3a7ff558ea1b63617ec06e13ed1dfd8335a14d"
+  }
+]

@@ -9,7 +9,10 @@ license = { text = "Proprietary" }
 # contract in core/contracts is built from Pydantic v2 models, so the package
 # cannot be imported without it. Nothing else is a runtime dependency yet.
 dependencies = [
+    "cryptography>=50.0.1",
     "pydantic>=2.9,<3",
+    "pyhanko>=0.37.0",
+    "signxml>=5.1.0",
 ]
 
 [dependency-groups]

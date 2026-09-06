@@ -9,6 +9,7 @@ same name.
 from __future__ import annotations
 
 import importlib
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -157,11 +158,13 @@ def test_an_unknown_identifier_raises() -> None:
         get("test.nothing")
 
 
-def test_phase_zero_registers_no_detectors() -> None:
-    """Phase 0 is skeleton and contracts. Importing the tree must not register a check.
+def test_only_implemented_detectors_register() -> None:
+    """A stub must not register itself before it has an implementation behind it.
 
-    If this ever fails, a detector was written ahead of the roadmap, or a stub
-    started registering itself before it had an implementation behind it.
+    Phase 4 registers the two Rung 0 detectors whose formats are public
+    standards. Everything else in the tree is still a stub, and importing a stub
+    must add nothing to the registry — otherwise a screening run would call a
+    check that does not exist.
     """
     clear_registry()
     for module in (
@@ -173,3 +176,22 @@ def test_phase_zero_registers_no_detectors() -> None:
         importlib.import_module(module)
 
     assert registered() == ()
+
+
+def test_the_implemented_detectors_are_registered() -> None:
+    """The Rung 0 pair, and nothing that is still a stub."""
+    clear_registry()
+    for module in (
+        "detectors.rung0_crypto.digilocker_xml_sig",
+        "detectors.rung0_crypto.pdf_pkcs7",
+    ):
+        # Drop it first, so the module body runs exactly once and registers once
+        # however many earlier tests already imported it.
+        sys.modules.pop(module, None)
+        importlib.import_module(module)
+
+    assert [detector.id for detector in registered()] == [
+        "rung0.digilocker_xml_sig",
+        "rung0.pdf_pkcs7",
+    ]
+    assert all(detector.rung is Rung.CRYPTOGRAPHIC for detector in registered())

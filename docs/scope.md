@@ -101,8 +101,13 @@ deciding whether to trust it.
 ## Facts to confirm with the deploying unit
 
 Written without access to the operational environment. Each affects scope and
-should be confirmed before phase 4:
+should be confirmed before the remaining Rung 0 work can proceed:
 
+- **A real Aadhaar Secure QR specimen, and the UIDAI certificate.** This is now
+  the single blocking item. Without it the Aadhaar detector cannot be written,
+  and one of the two document types in this table that can reach `CLEARED` does
+  not work. See `detectors/rung0_crypto/aadhaar_secure_qr.py` for exactly what
+  is needed.
 - The actual document mix at the target crossings, by volume. The table above
   assumes Nepali documents dominate; if it is mostly Indian documents with
   readable Aadhaar QRs, the clearance path is far wider than assumed here.

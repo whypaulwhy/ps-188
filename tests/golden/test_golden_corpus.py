@@ -9,10 +9,14 @@ registers it.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from core.contracts import Evidence, Result, Rung
-from detectors import get as get_detector
+from detectors import Detector
+from detectors.rung0_crypto import digilocker_xml_sig, pdf_pkcs7
+from detectors.rung0_crypto.trust_store import TrustStore
 from tests.golden.harness import (
     JARGON,
     GoldenCase,
@@ -20,6 +24,12 @@ from tests.golden.harness import (
     discover_cases,
     load_vectors,
 )
+
+BUILDERS: dict[str, Callable[[TrustStore], Detector]] = {
+    "rung0.digilocker_xml_sig": digilocker_xml_sig.build,
+    "rung0.pdf_pkcs7": pdf_pkcs7.build,
+}
+"""How to construct each implemented detector. A detector absent here is pending."""
 
 CASES: tuple[GoldenCase, ...] = discover_cases()
 IDS: list[str] = [case.case_id for case in CASES]
@@ -115,12 +125,11 @@ def test_the_detector_reproduces_the_golden(case: GoldenCase) -> None:
     Pending until the detector exists. This test needs no edit when it does:
     registering the detector is what switches it on.
     """
-    try:
-        detector_class = get_detector(case.detector_id)
-    except KeyError:
+    builder = BUILDERS.get(case.detector_id)
+    if builder is None:
         pytest.skip(f"{case.detector_id} is not implemented yet (phase {case.phase})")
 
-    detector = detector_class()
+    detector = builder(case.trust_store())
     subject = case.subject()
     actual = detector.run(subject) if detector.applies_to(subject) else ()
 

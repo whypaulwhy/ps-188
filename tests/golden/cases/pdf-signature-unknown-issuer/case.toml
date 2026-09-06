@@ -1,0 +1,18 @@
+# Golden case: pdf-signature-unknown-issuer
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "pdf-signature-unknown-issuer"
+description = "A signed PDF from an authority this checkpoint does not hold."
+detector = "rung0.pdf_pkcs7"
+declared_type = "DIGILOCKER_DOCUMENT"
+phase = 4
+input = "input.pdf"
+anchors = ["test-issuer.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Signed on 2026-09-06 with the second ephemeral RSA-2048 key, not retained, whose certificate is deliberately not committed as an anchor."
+sha256 = "798e4c292586cb14f6ae5158bd3a7ff558ea1b63617ec06e13ed1dfd8335a14d"

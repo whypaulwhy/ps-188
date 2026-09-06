@@ -125,10 +125,13 @@ are in the corpus.
 
 | Attack | Rung | Fixture |
 |---|---|---|
-| Fabricated Aadhaar QR payload | 0 | none yet — needs issuer keys, phase 4 |
-| Genuine Aadhaar, portrait substituted, QR intact | 0 | none yet, phase 4 |
-| Genuine Aadhaar, QR deliberately damaged | 0 → `NO_PROOF_PRESENT` | none yet, phase 4 |
-| Forged DigiLocker XML signature | 0 | none yet, phase 4 |
+| Fabricated Aadhaar QR payload | 0 | none — blocked on a real Secure QR specimen |
+| Genuine Aadhaar, portrait substituted, QR intact | 0 | none — blocked on a real Secure QR specimen |
+| Genuine Aadhaar, QR deliberately damaged | 0 → `NO_PROOF_PRESENT` | none — blocked on a real Secure QR specimen |
+| Forged DigiLocker XML signature | 0 | `digilocker-xml-tampered` ✅ |
+| DigiLocker document from an unknown authority | 0 → `NO_PROOF_PRESENT` | `digilocker-xml-unknown-issuer` ✅ |
+| Signed PDF altered after signing | 0 | `pdf-signature-tampered` ✅ |
+| Signed PDF from an unknown authority | 0 → `NO_PROOF_PRESENT` | `pdf-signature-unknown-issuer` ✅ |
 | Passport coded field altered in place | 1 | `td3-ind-dob-altered` ✅ |
 | Genuine passport, poor scan | 1 → `NOT_APPLICABLE` | `td3-ind-strip-unreadable` ✅ |
 | Genuine passport, correct strip | 1 → `PASS` | `td3-icao-specimen`, `td3-ind-specimen` ✅ |
@@ -141,8 +144,10 @@ are in the corpus.
 | Genuine document, wrong bearer | 2 | none yet, phase 7 |
 | Unrecognised document type | — | none; no detector applies, `MANUAL_REVIEW` by default |
 
-Five attacks have committed fixtures. The rest are named here so the gap is
-visible rather than discovered later.
+Nine attacks have committed fixtures. The rest are named here so the gap is
+visible rather than discovered later. The three Aadhaar rows are the most
+consequential gap in the table: Aadhaar is one of only two document types that
+can reach `CLEARED`, and none of its attacks can be tested yet.
 
 ## Attacks on the system itself
 

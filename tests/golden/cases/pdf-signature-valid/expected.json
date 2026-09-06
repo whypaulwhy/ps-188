@@ -1,0 +1,18 @@
+[
+  {
+    "detector_id": "rung0.pdf_pkcs7",
+    "rung": 0,
+    "result": "PROOF_VALID",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "The issuing authority's digital signature on this document is genuine.",
+      "Whether this document was withdrawn after it was issued could not be checked here, because that needs a network connection this checkpoint does not have."
+    ],
+    "standard_ref": "ISO 32000-2 s.12.8.3.3 (PKCS#7 / CMS), RFC 5652",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "952af6c5d01b7d21c39f2ce2602bea9ab27193e36c575ab42a6144e7d1df85e0"
+  }
+]

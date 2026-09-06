@@ -129,14 +129,22 @@ recorded in ADR 0005 and in the threat model rather than left implicit.
 
 ---
 
-## Phase 4 — Rung 0, cryptographic verification
+## Phase 4 — Rung 0, cryptographic verification (partial)
 
 The only rung that can clear a document, so it is built before the rungs that
 cannot.
 
-- `detectors/rung0_crypto/aadhaar_secure_qr.py`, `digilocker_xml_sig.py`,
-  `pdf_pkcs7.py`.
-- `epassport_sod.py` stays a stub. It is blocked on chip reader hardware and the
+- `trust_store.py`: issuer anchors, each carrying its own algorithm allowlist
+  and validity window. Passed in by the caller, never loaded by a detector.
+- `verification.py`: the format-agnostic core. Three outcomes, and only one
+  path reaches the one that can clear a document.
+- `digilocker_xml_sig.py` and `pdf_pkcs7.py`: **done**, with committed golden
+  fixtures for a valid signature, a tampered document and an unknown issuer.
+- `aadhaar_secure_qr.py`: **still a stub, deliberately.** The cryptography is
+  ordinary RSA and already exists in `verification.py`; what is missing is the
+  container layout, and there is no specimen to check a parser against. The
+  module docstring lists the four things needed to finish it.
+- `epassport_sod.py` stays a stub. Blocked on chip reader hardware, and the
   console must say so on every case rather than quietly omitting it.
 
 These detectors verify signatures over payload bytes. Getting those bytes out
@@ -144,8 +152,23 @@ of a photograph is `extraction/qr_decode.py`, which is phase 6 — so the golden
 fixtures here are committed payloads, in the same data-level form phase 1
 established.
 
-**Exit criteria.** Golden tests with committed fixtures for every detector.
-A tampered payload produces `PROOF_INVALID`, not an exception.
+**Exit criteria met for what shipped.** Golden fixtures for both implemented
+detectors, and a tampered document produces `PROOF_INVALID` rather than an
+exception. Not met for Aadhaar, which has no detector to test.
+
+**What this cost.** `docs/scope.md` lists two document types that can reach
+`CLEARED`: Aadhaar with a readable Secure QR, and DigiLocker issued documents.
+Only the second of those works. Until a real Secure QR specimen is available,
+an Aadhaar card reaches at best `MANUAL_REVIEW`, and the practical clearance
+rate at an SSB crossing is lower than the scope table implies.
+
+**One bug worth remembering.** The PDF library reports a tampered document as
+`valid`, because the signature object is still well formed; only `intact` says
+the bytes still match. It also drops `trusted` to false whenever a document is
+not intact, so trust alone cannot tell a tampered document from one signed by an
+unknown authority — two cases with opposite outcomes. The detector therefore
+recognises the signer independently of validation. Both behaviours are pinned by
+golden fixtures.
 
 ---
 

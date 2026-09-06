@@ -1,0 +1,18 @@
+# Golden case: digilocker-xml-valid
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "digilocker-xml-valid"
+description = "A DigiLocker document whose issuer signature verifies against a pinned anchor."
+detector = "rung0.digilocker_xml_sig"
+declared_type = "DIGILOCKER_DOCUMENT"
+phase = 4
+input = "input.xml"
+anchors = ["test-issuer.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Signed on 2026-09-06 with an ephemeral RSA-2048 key that was not retained. The issuer certificate is committed at tests/golden/anchors/test-issuer.der."
+sha256 = "16005085ca6030a14fc2a2ca8e5fde4e46d33159a8578f36b1ca515e8e6e5e18"

@@ -1,0 +1,18 @@
+# Golden case: pdf-signature-valid
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "pdf-signature-valid"
+description = "A signed PDF whose CMS signature verifies against a pinned anchor."
+detector = "rung0.pdf_pkcs7"
+declared_type = "DIGILOCKER_DOCUMENT"
+phase = 4
+input = "input.pdf"
+anchors = ["test-issuer.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Signed on 2026-09-06 with the same ephemeral RSA-2048 key as the XML cases, which was not retained."
+sha256 = "952af6c5d01b7d21c39f2ce2602bea9ab27193e36c575ab42a6144e7d1df85e0"

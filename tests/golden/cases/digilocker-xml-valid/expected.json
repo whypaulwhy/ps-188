@@ -1,0 +1,17 @@
+[
+  {
+    "detector_id": "rung0.digilocker_xml_sig",
+    "rung": 0,
+    "result": "PROOF_VALID",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "The issuing authority's digital signature on this document is genuine."
+    ],
+    "standard_ref": "W3C XML Signature Syntax and Processing 1.1, s.3.2",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "16005085ca6030a14fc2a2ca8e5fde4e46d33159a8578f36b1ca515e8e6e5e18"
+  }
+]
