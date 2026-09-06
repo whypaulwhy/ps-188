@@ -16,14 +16,11 @@ from __future__ import annotations
 import datetime
 import hashlib
 
-import pytest
-
 from core.contracts import Decision, DocumentType, Provenance, Result, ZoneName
 from core.trust import resolve
 from datagen.forgeries.photo_substitution import PhotoSubstitution
 from datagen.synthetic_docs import generate_specimen
 from detectors.rung1_deterministic import expiry, mrz_checkdigits
-from extraction.ocr_adapter import tesseract_path
 from extraction.pipeline import build_subject
 
 WHEN = datetime.datetime(2026, 1, 1, 12, 0, tzinfo=datetime.UTC)
@@ -109,16 +106,32 @@ def test_whatever_was_not_extracted_reaches_the_officer() -> None:
         assert verdict.not_checked
 
 
-@pytest.mark.skipif(tesseract_path() is not None, reason="Tesseract is installed here")
-def test_without_a_strip_reader_the_case_goes_to_a_human_and_says_why() -> None:
-    """The state this deployment is currently in, pinned so it cannot regress silently.
+def test_a_strip_that_was_not_read_is_never_treated_as_one_that_passed() -> None:
+    """The contract, whatever reader is installed on this machine.
 
-    A strip that was found but not read must never be treated as a strip that
-    passed. It goes to a human, and the officer is told a reader is missing.
+    A strip the reader could not vouch for must reach the officer as a check
+    that did not happen, with a stated reason — never as a silent pass and
+    never as a failure the traveller is turned back on.
     """
     subject, verdict = screen(SPECIMEN.png)
+    zone = subject.zone(ZoneName.MRZ)
+    assert zone is not None
 
-    assert verdict.decision is Decision.MANUAL_REVIEW
-    assert any("no reader installed" in sentence for sentence in subject.not_extracted)
-    assert verdict.not_checked
-    assert all(item.result is Result.NOT_APPLICABLE for item in verdict.evidence)
+    if not zone.complete:
+        assert zone.lines == ()
+        assert subject.not_extracted
+        assert verdict.decision is Decision.MANUAL_REVIEW
+        assert all(item.result is Result.NOT_APPLICABLE for item in verdict.evidence)
+        assert verdict.not_checked
+    else:
+        assert all(len(line) == 44 for line in zone.lines)
+        assert verdict.decision is not Decision.CLEARED
+
+
+def test_a_reader_is_installed_or_the_case_says_so() -> None:
+    """Whichever is true, the officer is told. Silence is the one unacceptable state."""
+    subject, _ = screen(SPECIMEN.png)
+    zone = subject.zone(ZoneName.MRZ)
+    assert zone is not None
+
+    assert zone.complete or any("could not be read" in line for line in subject.not_extracted)

@@ -29,12 +29,28 @@ starts normally and says what it cannot do.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess  # Tesseract is a local binary, invoked with a fixed argument list
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
+
+from core.standards.mrz.parse import TD3_LINE_COUNT, TD3_LINE_LENGTH
+
+TESSERACT_ENV: Final[str] = "SENTINELID_TESSERACT"
+"""Explicit override. A deployment states where its reader is rather than hoping."""
+
+KNOWN_LOCATIONS: Final[tuple[str, ...]] = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    "/usr/bin/tesseract",
+    "/usr/local/bin/tesseract",
+    "/opt/homebrew/bin/tesseract",
+)
+"""Where the reader usually lands. Its installer does not always amend the path."""
 
 MRZ_ALPHABET: Final[str] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
 """The complete machine-readable zone character set, used as the Tesseract whitelist."""
@@ -42,6 +58,11 @@ MRZ_ALPHABET: Final[str] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
 TESSERACT_MISSING: Final[str] = (
     "The machine-readable strip was found but could not be read, because this "
     "checkpoint has no reader installed for the special typeface it uses."
+)
+UNRELIABLE: Final[str] = (
+    "The machine-readable strip was found but could not be read reliably, so it "
+    "was not used. This is a problem with the scan or the reader, not a sign "
+    "that the document is false."
 )
 RAPIDOCR_MISSING: Final[str] = (
     "The printed text on this document could not be read, because the text "
@@ -63,13 +84,58 @@ class TextReading:
     """Why the reading is incomplete, in officer-facing language."""
 
 
+def well_formed_strip(lines: Sequence[str]) -> tuple[str, ...] | None:
+    """Return the recovered lines only if they are shaped like a real strip.
+
+    This is a refusal, not a repair. A reader that returns forty-six characters
+    for a forty-four character line has inserted something, and the alignment
+    of every field after the insertion is wrong. Passing that downstream would
+    put a plausible, incorrect strip in front of the check-digit detector,
+    which would then fail a genuine document and reject a real traveller —
+    the first-order harm in `docs/threat-model.md`.
+
+    Nothing is corrected here. A run of filler characters is exactly where a
+    general reader goes wrong, and "the line is too long so trim the filler" is
+    a guess dressed as arithmetic.
+
+    Args:
+        lines: What the reader returned.
+
+    Returns:
+        The two strip lines, or None if the reading cannot be vouched for.
+    """
+    candidates = tuple(
+        line for line in lines if len(line) == TD3_LINE_LENGTH and set(line) <= set(MRZ_ALPHABET)
+    )
+    if len(candidates) != TD3_LINE_COUNT:
+        return None
+    return candidates
+
+
 def tesseract_path() -> str | None:
     """Return the Tesseract binary, or None if this deployment has none.
+
+    Looked up in three places, most explicit first: the `SENTINELID_TESSERACT`
+    environment variable, the path, then the handful of locations its installer
+    uses. The third exists because the Windows installer does not amend the
+    path, and a checkpoint box is not somewhere anyone wants to be debugging
+    environment variables.
 
     Returns:
         The resolved path, or None. None is a normal state, not an error.
     """
-    return shutil.which("tesseract")
+    override = os.environ.get(TESSERACT_ENV)
+    if override and Path(override).is_file():
+        return override
+
+    found = shutil.which("tesseract")
+    if found is not None:
+        return found
+
+    for candidate in KNOWN_LOCATIONS:
+        if Path(candidate).is_file():
+            return candidate
+    return None
 
 
 def read_mrz(image: Any) -> TextReading:  # noqa: ANN401 - a NumPy array; core stays free of NumPy
@@ -116,7 +182,11 @@ def read_mrz(image: Any) -> TextReading:  # noqa: ANN401 - a NumPy array; core s
     )
     if not lines:
         return TextReading((), complete=False, reason=TESSERACT_MISSING)
-    return TextReading(lines, complete=True)
+
+    accepted = well_formed_strip(lines)
+    if accepted is None:
+        return TextReading((), complete=False, reason=UNRELIABLE)
+    return TextReading(accepted, complete=True)
 
 
 def read_printed_text(image: Any) -> TextReading:  # noqa: ANN401 - a NumPy array

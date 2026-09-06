@@ -249,11 +249,35 @@ no linguistic context to orient it.
 
 This is exactly what the stack in CLAUDE.md already specified — *"Tesseract with
 an OCR-B whitelist for the MRZ zone only"* — and it is now demonstrated rather
-than assumed. **Tesseract is not installed on the development machine**, so the
-strip is currently reported as found but unread, and every case with a strip
-goes to a human saying so. That is the correct behaviour, not a bug, and it is
-pinned by a test that will start asserting the opposite the moment a reader is
-installed.
+than assumed.
+
+**Tesseract 5.4 is now installed and wired in**, found through an explicit
+override, then the path, then the handful of locations its installer uses — the
+Windows installer does not amend the path, and a checkpoint box is not somewhere
+anyone wants to be debugging environment variables.
+
+It reads the first strip line at 98% character agreement. It does not reliably
+read the second, and the reason is **our renderer, not the reader**: a real
+strip is set in OCR-B, which exists precisely to disambiguate `O` from `0`, and
+the synthetic specimens are drawn in a font that is not. Rendered in a monospace
+font the coded data fields come back exactly — `9001011M3501014` character for
+character — and the errors are confined to the long filler runs, where the
+reader inserts and merges characters. That breaks the line length, which
+destroys the alignment of every field after it.
+
+**The reader therefore refuses to vouch for a reading it cannot trust.** A line
+of forty-six characters where forty-four are expected has had something
+inserted; passing it downstream would put a plausible, incorrect strip in front
+of the check-digit detector and fail a genuine document. Nothing is repaired —
+trimming a filler run until the length comes out is a guess dressed as
+arithmetic. Either two well-formed lines come back, or nothing does with a
+stated reason. There is no third outcome, and a test asserts it.
+
+**What would close the remaining gap**, in order of cost: OCR-B-trained data for
+Tesseract, which is what production MRZ readers use and which could not be
+fetched offline here; or a specimen renderer using a licensed OCR-B face, which
+would make the synthetic corpus representative of what a real strip looks
+like.
 
 The strip is deliberately **not** repaired by reversing the string and mapping
 `>` back to `<`. Individual characters are also substituted, so a repaired strip
