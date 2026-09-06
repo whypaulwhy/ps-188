@@ -40,6 +40,26 @@ Open a new terminal afterwards, then:
 make check
 ```
 
+### The Microsoft Visual C++ runtime — needed for QR and barcode reading
+
+The code reader is a bundled native library, and on Windows it needs the
+Microsoft Visual C++ redistributable. Without it the library fails to load and
+**no code can be decoded anywhere on that machine**.
+
+```
+winget install --id Microsoft.VCRedist.2015+.x64 -e
+```
+
+To check whether a machine has it working:
+
+```
+uv run python -c "from extraction.qr_decode import decoder_available; print(decoder_available())"
+```
+
+Without it the system still runs and every case says the code could not be read,
+which is correct behaviour rather than a failure. It does mean the Aadhaar
+Secure QR path could not work on that machine even once a specimen exists.
+
 ### OCR-B training data for Tesseract — needed for reliable strip reading
 
 The installed Tesseract has two language packs, `eng` and `osd`. Neither is

@@ -18,6 +18,24 @@ DECODER_MISSING: Final[str] = (
 )
 
 
+def decoder_available() -> bool:
+    """Report whether a code reader can be loaded at all.
+
+    On Windows the reader is a bundled native library that needs the Microsoft
+    Visual C++ runtime; without it the import fails and no code can be decoded
+    anywhere on the machine. That is a deployment fact worth being able to ask
+    about directly, rather than inferring it from a failed decode.
+
+    Returns:
+        Whether the decoder loads. False is a normal state, not an error.
+    """
+    try:
+        from pyzbar import pyzbar  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
 def decode_qr(image: Any) -> tuple[list[bytes], str | None]:  # noqa: ANN401 - a NumPy array
     """Decode every code found in an image.
 

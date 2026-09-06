@@ -110,6 +110,10 @@ def test_a_score_is_suspicion_within_range(module: object) -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    tamper_trufor.weights_path() is not None,
+    reason="TruFor weights are configured on this machine",
+)
 def test_trufor_is_inconclusive_when_its_model_is_absent() -> None:
     """The behaviour CLAUDE.md's testing rule asks for, and this deployment's state.
 
@@ -124,6 +128,10 @@ def test_trufor_is_inconclusive_when_its_model_is_absent() -> None:
     assert "not installed" in evidence.reasons[0]
 
 
+@pytest.mark.skipif(
+    tamper_trufor.weights_path() is not None,
+    reason="TruFor weights are configured on this machine",
+)
 def test_trufor_reports_its_model_version_as_unavailable() -> None:
     """The audit record has to show which model produced a result, including none."""
     (evidence,) = tamper_trufor.build().run(subject(SPECIMEN.png))

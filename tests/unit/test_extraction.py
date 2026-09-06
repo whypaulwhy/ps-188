@@ -16,7 +16,7 @@ from datagen.synthetic_docs import generate_specimen
 from extraction.mrz_locate import locate_mrz
 from extraction.ocr_adapter import read_mrz, tesseract_path, well_formed_strip
 from extraction.preprocess import decode, normalise
-from extraction.qr_decode import decode_qr
+from extraction.qr_decode import decode_qr, decoder_available
 
 SPECIMEN = generate_specimen(seed=1)
 
@@ -81,8 +81,30 @@ def test_the_crop_stays_inside_the_image() -> None:
     assert region.crop(grey(), pad=10_000).size > 0
 
 
-def test_a_document_with_no_code_decodes_to_nothing() -> None:
-    """An empty result with no reason means there was no code, not that reading failed."""
+def test_a_document_with_no_code_yields_no_payloads() -> None:
+    """The contract, whatever this machine has installed.
+
+    Either the decoder ran and found nothing, or it could not load and says so.
+    There is no third outcome, and in particular a blank page never produces a
+    payload.
+
+    An earlier version of this test asserted the reason was always None, which
+    quietly encoded "the code reader is always installed". It passed here and
+    failed on a teammate's machine, where the reader could not load.
+    """
+    payloads, reason = decode_qr(Image.new("RGB", (50, 50), (255, 255, 255)))
+
+    assert payloads == []
+    assert reason is None or "not available" in reason
+
+
+@pytest.mark.skipif(not decoder_available(), reason="no code reader on this machine")
+def test_a_working_decoder_reports_no_reason() -> None:
+    """When the reader does load, an empty result carries no excuse with it.
+
+    The distinction matters: an empty list with a reason means nothing was
+    checked, and an empty list without one means the document carries no code.
+    """
     payloads, reason = decode_qr(Image.new("RGB", (50, 50), (255, 255, 255)))
 
     assert payloads == []
