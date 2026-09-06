@@ -1,9 +1,13 @@
 # Evaluation protocol
 
-> **Status: skeleton.** `eval/run_eval.py` is a stub and no evaluation has been
-> run. There are therefore **no performance numbers anywhere in this
-> repository**, and there must not be until this document is filled in and the
-> runner has produced a report. That is rule 2 of CLAUDE.md.
+> **Status: running.** `eval/run_eval.py` is built and has been run on the
+> `synthetic-utopia-v1` protocol. Its report is in
+> [`../eval/reports/`](../eval/reports/) and is the only place in this
+> repository a performance figure may come from. That is rule 2 of CLAUDE.md.
+>
+> **Every number that exists today describes synthetic documents this
+> repository generated.** Nothing in this project has ever seen a real
+> document, so no figure here is a claim about real-world performance.
 
 ## The rule
 

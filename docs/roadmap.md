@@ -211,7 +211,7 @@ is better than shipping a check that always passes and looks like coverage.
 
 ---
 
-## Phase 6 — Synthetic data, extraction, evaluation, and classical tamper detection (partial)
+## Phase 6 — Synthetic data, extraction, evaluation, and classical tamper detection ✅
 
 The measuring instrument is built before the thing being measured. This is also
 where the first images in the project appear, which is why extraction lands
@@ -284,15 +284,50 @@ The strip is deliberately **not** repaired by reversing the string and mapping
 would be plausible and wrong, and would manufacture check-digit failures on
 genuine documents — the first-order harm in `docs/threat-model.md`.
 
-### Still to do in phase 6
+### The evaluation, and what it found
 
-- `eval/protocol.py`, `run_eval.py`, `metrics.py`. **No performance figure
-  exists yet**, so rule 2 still holds without exception.
-- `detectors/rung2_inference/`: the four tamper detectors. TruFor has no weights
-  available here and will ship reporting `INCONCLUSIVE`, which is what
-  CLAUDE.md's testing rule asks of an unavailable model.
-- `field_crossmatch.py` and `template_geometry.py`, carried from phase 5. The
-  printed page is now readable, so the first of these is unblocked.
+`eval/` is built and has run. The report is committed under `eval/reports/` and
+is the **only** place in this repository a performance figure may come from.
+
+It reports per detector and **per forgery type**, never pooled, and it leads
+with what the numbers are not. Three findings are worth carrying forward.
+
+**The first version of `tamper_classical` escalated 100% of genuine documents.**
+The evaluation caught it immediately. The cause was arithmetic, not tuning: the
+signals were normalised against the median block variance of the whole image,
+and most of a document is blank paper with a variance of essentially zero, so
+every ratio divided by noise and saturated. Restricting the measurement to
+textured blocks fixed it. Genuine documents now score 0.37 and escalate 0% of
+the time.
+
+**Only one of the three classical signals separates anything, and it separates
+exactly one attack.** Error level localisation catches `recapture` at +0.32
+above genuine. Noise localisation and block duplication separate nothing, so
+they are computed as diagnostics and deliberately **not scored**. Scoring a
+signal that does not discriminate buys false escalations and nothing else.
+
+**Why the other four forgeries are invisible is a property of the dataset, not
+proof that they are undetectable.** The specimens are lossless images, edited
+losslessly and saved losslessly, so there is no compression history for these
+techniques to find an inconsistency in. `recapture` is the only generator that
+introduces a compression round trip. Making the others measurable means
+modelling a realistic capture chain in `datagen` -- photographed as JPEG,
+edited, re-saved -- which is the next piece of work here, and it is a change to
+the data rather than to any detector.
+
+`separation()` itself had to be corrected mid-phase: it first pooled every
+forgery type into one median and reported `+0.03` for a detector that separates
+one attack by `+0.32` and is blind to four. That is the same error as a single
+headline accuracy figure, committed inside a function whose own docstring
+forbids it.
+
+### Deferred out of phase 6
+
+`template_geometry.py` measures a document against its issuer's template, and
+the only template available is the one `datagen` draws. A detector built against
+it would pass its own fixtures perfectly and say nothing about a real document:
+the code agreeing with itself. It waits alongside the Aadhaar container and the
+Bhutanese and Nepali formats, all blocked on the same thing, a real specimen.
 
 **Exit criteria.** `eval/run_eval.py` has run on a named dataset and written a
 report to `eval/reports/`. Until then, rule 2 of CLAUDE.md means no performance

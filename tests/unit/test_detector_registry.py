@@ -170,7 +170,6 @@ def test_only_implemented_detectors_register() -> None:
     for module in (
         "detectors.rung0_crypto.aadhaar_secure_qr",
         "detectors.rung1_deterministic.template_geometry",
-        "detectors.rung2_inference.tamper_classical",
         "detectors.rung3_context.watchlist",
     ):
         importlib.import_module(module)
@@ -185,7 +184,12 @@ def test_the_implemented_detectors_are_registered() -> None:
         "detectors.rung0_crypto.digilocker_xml_sig",
         "detectors.rung0_crypto.pdf_pkcs7",
         "detectors.rung1_deterministic.expiry",
+        "detectors.rung1_deterministic.field_crossmatch",
         "detectors.rung1_deterministic.mrz_checkdigits",
+        "detectors.rung2_inference.metadata_forensics",
+        "detectors.rung2_inference.pdf_structure",
+        "detectors.rung2_inference.tamper_classical",
+        "detectors.rung2_inference.tamper_trufor",
     ):
         # Drop it first, so the module body runs exactly once and registers once
         # however many earlier tests already imported it.
@@ -196,11 +200,21 @@ def test_the_implemented_detectors_are_registered() -> None:
         "rung0.digilocker_xml_sig",
         "rung0.pdf_pkcs7",
         "rung1.expiry",
+        "rung1.field_crossmatch",
         "rung1.mrz_checkdigits",
+        "rung2.metadata_forensics",
+        "rung2.pdf_structure",
+        "rung2.tamper_classical",
+        "rung2.tamper_trufor",
     ]
     assert [detector.rung for detector in registered()] == [
         Rung.CRYPTOGRAPHIC,
         Rung.CRYPTOGRAPHIC,
         Rung.DETERMINISTIC,
         Rung.DETERMINISTIC,
+        Rung.DETERMINISTIC,
+        Rung.INFERENCE,
+        Rung.INFERENCE,
+        Rung.INFERENCE,
+        Rung.INFERENCE,
     ]

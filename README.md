@@ -63,9 +63,12 @@ Ten numbered points, in [`docs/scope.md`](docs/scope.md). The short version:
   is nothing in one for a machine to verify. "Nothing was found wrong" is not
   the same sentence as "this is genuine", and the console must never render it
   as though it were.
-- **It has no measured accuracy.** `eval/run_eval.py` has not been run. Any
-  figure quoted about this system today is invented, whoever quotes it. This is
-  rule 2 of [`CLAUDE.md`](CLAUDE.md) and it is enforced by a test.
+- **It has no measured real-world accuracy.** `eval/run_eval.py` has now run,
+  and its report is in [`eval/reports/`](eval/reports/) -- but every number in
+  it describes synthetic documents this repository generated, in a font that is
+  not OCR-B. Nothing here has ever seen a real document. Any figure quoted about
+  this system's real-world performance is invented, whoever quotes it. That is
+  rule 2 of [`CLAUDE.md`](CLAUDE.md).
 
 ## Status
 
@@ -79,7 +82,7 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 3 | Privacy: hashing, masking, retention | ✅ |
 | 4 | Rung 0, cryptographic verification | ◐ partial |
 | 5 | Rung 1, deterministic detectors | ◐ partial |
-| 6 | Synthetic data, extraction, evaluation, tamper detection | ◐ partial |
+| 6 | Synthetic data, extraction, evaluation, tamper detection | ✅ |
 | 7 | Rung 2, biometrics | ☐ |
 | 8 | Rung 3, contextual advisories | ☐ |
 | 9 | API, database, ledger, officer console | ☐ |
@@ -87,9 +90,10 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 **Working today:** the trust ladder and evidence contract; ICAO 9303 TD3 parsing
 and check-digit arithmetic; Verhoeff; two-digit-year century recovery; salted
 identifier hashing, masking and retention; DigiLocker XML signature and signed
-PDF verification; MRZ check-digit and expiry detectors; synthetic specimen and
-forgery generation; and extraction — a photograph now produces a verdict end to
-end.
+PDF verification; MRZ check-digit, expiry and strip-versus-page detectors;
+synthetic specimen and forgery generation; extraction, so a photograph produces
+a verdict end to end; four Rung 2 tamper detectors; and an evaluation harness
+that has run and produced a committed report.
 
 **Known gaps, deliberately:**
 
