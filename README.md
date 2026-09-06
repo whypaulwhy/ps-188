@@ -113,6 +113,10 @@ uv sync
 make check
 ```
 
+A fresh machine needs `make` and Tesseract as well; see
+[`docs/getting-started.md`](docs/getting-started.md), which also lists what is
+waiting on a decision, a specimen or a piece of hardware rather than on code.
+
 `make check` is the gate: ruff, `mypy --strict` over `core/`, import-linter, and
 pytest. `core/` is held at 100% branch coverage — it is pure functions, so there
 is no excuse. CI runs the same command on every push.
@@ -143,6 +147,7 @@ by import-linter in CI, not left to review.
 | | |
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | The project's non-negotiable rules. Read first. |
+| [`docs/getting-started.md`](docs/getting-started.md) | Setting up, and what is blocked on a human rather than on code. |
 | [`docs/scope.md`](docs/scope.md) | What is accepted, what is refused, what the system does not do. |
 | [`docs/trust-ladder.md`](docs/trust-ladder.md) | How evidence resolves into one decision. |
 | [`docs/evidence-contract.md`](docs/evidence-contract.md) | What every detector returns, and why each field exists. |
