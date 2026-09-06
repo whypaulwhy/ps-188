@@ -85,17 +85,19 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 6 | Synthetic data, extraction, evaluation, tamper detection | ✅ |
 | 7 | Rung 2, biometrics | ◐ partial |
 | 8 | Rung 3, contextual advisories | ✅ |
-| 9 | API, database, ledger, officer console | ☐ |
+| 9 | Ledger, database, officer report | ◐ partial |
 
 **Working today:** the trust ladder and evidence contract; ICAO 9303 TD3 parsing
-and check-digit arithmetic; Verhoeff; two-digit-year century recovery; salted
+and check-digit arithmetic; Verhoeff; two-digit-year century recovery; keyed
 identifier hashing, masking and retention; DigiLocker XML signature and signed
 PDF verification; MRZ check-digit, expiry and strip-versus-page detectors;
 synthetic specimen and forgery generation; extraction, so a photograph produces
 a verdict end to end; four Rung 2 tamper detectors; Rung 3 repeat-crossing and
 watchlist advisories that provably cannot change a decision; encrypted-at-rest
-face embeddings with a retention window enforced in code; and an evaluation
-harness that has run and produced a committed report.
+face embeddings with a retention window enforced in code; an evaluation
+harness that has run and produced a committed report; and an audit trail --
+a Merkle transparency log with signed checkpoints, a guarded SQLite store, and
+an officer report that states what was not checked on every case.
 
 **Known gaps, deliberately:**
 
@@ -113,6 +115,11 @@ harness that has run and produced a committed report.
   than guessing and failing a genuine document.
 - **No chip reading.** Blocked on hardware, and every case says so rather than
   omitting the check.
+- **No API and no console yet.** The audit trail underneath them is built and
+  tested: a case is screened, stored, replayed and proved. What is missing is
+  the shell around it -- HTTP routes, the officer screen, and Alembic
+  migrations. `create_all` is a test convenience, not a deployment path. See
+  phase 9 slice B in [`docs/roadmap.md`](docs/roadmap.md).
 - **No face matching.** The storage side is done — embeddings are encrypted at
   rest under their own key, with a retention window the code enforces and a test
   that fails if any file calls an embedding anonymous. The matching side has no
@@ -147,8 +154,10 @@ core/          pure decision logic — no I/O, no framework, no models
   privacy/       hashing, masking, retention
 detectors/     every check, grouped by rung; each returns Evidence
 extraction/    capture to text and codes (phase 6)
-ledger/        append-only audit trail (phase 9)
-api/ db/ ui/   the outward-facing shell (phase 9)
+ledger/        append-only Merkle audit trail, signed checkpoints
+db/            SQLite in WAL mode, guarded against storing a raw number
+explain/       the officer-facing report
+api/ ui/       the outward-facing shell (phase 9 slice B)
 datagen/       synthetic specimens and forgeries (phase 6)
 eval/          the only sanctioned source of performance numbers
 tests/         unit, golden fixtures, integration

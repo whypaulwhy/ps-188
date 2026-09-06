@@ -33,10 +33,21 @@ number. Deciding whether a number is well formed is a Rung 1 detector's job.
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from typing import Final
 
 from core.privacy.masking import mask_value
+from core.standards.verhoeff import verhoeff_is_valid
+
+ISSUABLE_PREFIXES: Final[frozenset[str]] = frozenset("23456789")
+"""UIDAI issues no Aadhaar number beginning with 0 or 1."""
+
+TWELVE_DIGITS: Final[re.Pattern[str]] = re.compile(r"(?<!\d)(\d{12})(?!\d)")
+"""A twelve-digit run that is not part of a longer number."""
+
+SHA256_TOKEN: Final[re.Pattern[str]] = re.compile(r"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
+"""A hex digest. Removed before scanning: a digest is not a document number."""
 
 _STRIPPED: Final[str] = " -/"
 """Separators removed on construction. Two spellings of one number must not diverge."""
@@ -134,3 +145,28 @@ class RawIdentifier:
     def __hash__(self) -> int:
         """Hash by kind and value, so identifiers can key an in-memory map."""
         return hash((self.kind, self._value))
+
+
+def find_issuable_aadhaar(text: str) -> str | None:
+    """Return the first number in a text that could be a real Aadhaar number.
+
+    Used in two places that must agree: the test that scans this repository,
+    and the guard that stands in front of the database. Sharing one
+    implementation means the thing the test checks is the thing the system
+    enforces.
+
+    A twelve-digit run counts only if it begins 2 to 9 and satisfies the
+    Verhoeff checksum. Hex digests are removed first, because a SHA-256 value
+    routinely contains twelve consecutive digits and is not a document number.
+
+    Args:
+        text: The text to scan.
+
+    Returns:
+        The offending number, or None. Callers must mask it before reporting
+        it: a message naming a leaked number has leaked it again.
+    """
+    for candidate in TWELVE_DIGITS.findall(SHA256_TOKEN.sub("", text)):
+        if candidate[0] in ISSUABLE_PREFIXES and verhoeff_is_valid(candidate):
+            return str(candidate)
+    return None

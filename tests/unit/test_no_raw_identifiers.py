@@ -6,25 +6,28 @@ Three separate checks, because the rule can be broken in three separate ways.
 2. Only the hashing module reads a number in the clear.
 3. No contract field can carry one.
 
-**What this does not yet cover.** The roadmap's exit criterion for phase 3 is a
-test that fails if a raw number can reach any *persistence path*. There is no
-persistence path — `db/` is stubs until phase 9 — so the strongest available
-statement today is the three above. The database test lands in phase 9 against
-real persistence, and the roadmap says so rather than treating this as
-finished.
+**The fourth check lives in `test_persistence.py`.** The roadmap's exit
+criterion for phase 3 names a *persistence path*, and there was none to name
+until phase 9 built one. It exists now, and the criterion is tested there
+against a real database.
+
+Both files ask the same question through the same function,
+:func:`core.privacy.identifiers.find_issuable_aadhaar`. That is deliberate: if
+the scan and the database guard could disagree about what an issuable number
+looks like, one of them would be enforcing a rule nobody had checked.
 """
 
 from __future__ import annotations
 
 import pathlib
-import re
 from typing import Final
 
 import pytest
 
 from core import contracts
 from core.privacy import RawIdentifier, mask_value
-from core.standards.verhoeff import verhoeff_is_valid
+from core.privacy.identifiers import find_issuable_aadhaar
+from core.standards.verhoeff import verhoeff_digit
 
 REPO: Final[pathlib.Path] = pathlib.Path(__file__).parents[2]
 
@@ -45,15 +48,6 @@ SKIPPED_DIRECTORIES: Final[frozenset[str]] = frozenset(
         "htmlcov",
     }
 )
-
-TWELVE_DIGITS: Final[re.Pattern[str]] = re.compile(r"(?<!\d)(\d{12})(?!\d)")
-"""A twelve-digit run that is not part of a longer number."""
-
-SHA256_TOKEN: Final[re.Pattern[str]] = re.compile(r"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
-"""A hex digest. Removed before scanning, since a digest is not a document number."""
-
-NOT_ISSUABLE_PREFIXES: Final[frozenset[str]] = frozenset("01")
-"""UIDAI issues no Aadhaar number beginning with 0 or 1, which is why fixtures start with 0."""
 
 REVEAL_IS_ALLOWED_IN: Final[frozenset[str]] = frozenset(
     {
@@ -99,14 +93,23 @@ def test_no_file_contains_an_issuable_aadhaar_number(path: pathlib.Path) -> None
     The failure message masks what it found. A test that reports a leaked
     number in a CI log has leaked it again.
     """
-    text = SHA256_TOKEN.sub("", path.read_text(encoding="utf-8", errors="ignore"))
+    found = find_issuable_aadhaar(path.read_text(encoding="utf-8", errors="ignore"))
 
-    for candidate in TWELVE_DIGITS.findall(text):
-        issuable = candidate[0] not in NOT_ISSUABLE_PREFIXES and verhoeff_is_valid(candidate)
-        assert not issuable, (
-            f"{path.relative_to(REPO).as_posix()} contains {mask_value(candidate)}, "
-            f"which has the shape of an issuable Aadhaar number"
-        )
+    assert found is None, (
+        f"{path.relative_to(REPO).as_posix()} contains {mask_value(found or '')}, "
+        f"which has the shape of an issuable Aadhaar number"
+    )
+
+
+def test_the_scan_would_notice_a_real_number() -> None:
+    """A scan that cannot fail is not a guard, so this proves it can.
+
+    The number is computed rather than written down, because writing one into
+    this file would make the test above fail on the test below.
+    """
+    body = "23456789012"
+
+    assert find_issuable_aadhaar(f"reference {body + verhoeff_digit(body)} on file") is not None
 
 
 def test_only_the_hashing_module_reads_a_number_in_the_clear() -> None:

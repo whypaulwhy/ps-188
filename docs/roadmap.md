@@ -440,16 +440,72 @@ working as intended.
 ## Phase 9 — The shell
 
 Everything that touches the outside world, built last because `core/` and
-`detectors/` must never depend on it.
+`detectors/` must never depend on it. Split in two: the audit trail first,
+because the exit criteria are about it, then the interfaces that sit on top.
 
-- `db/`, `ledger/`, `api/`, `explain/renderer.py`, `ui/console.py`,
-  `deploy/`.
+### Slice A — ledger, database, renderer ✅
 
-**Exit criteria.** The officer console states what was not checked on every
-case. A screening decision can be replayed from the ledger and produces the
-same verdict.
+- `ledger/hashchain.py`: a Merkle log with RFC 6962 domain separation, and
+  Ed25519 signed checkpoints.
+- `ledger/interface.py`: what is logged, and the canonical serialisation a
+  replay is compared against.
+- `db/models.py`, `db/session.py`, `db/guards.py`: SQLite in WAL mode, with a
+  guard that refuses to flush a raw document number.
+- `explain/renderer.py`: the officer-facing report.
 
-**Carried over from phase 3.** A test that fails if a raw document number can
-reach any persistence path. Phase 3 built the machinery that makes this a type
-error and proved it three other ways, but the criterion names persistence, and
-persistence is built here.
+**All three exit criteria met.**
+
+*Every report states what was not checked.* The section is emitted on every
+case, including clearances and including cases where nothing was left
+unchecked — where it says so in words rather than disappearing. A vanishing
+section teaches an officer to stop looking for it. Tested against every shape
+of verdict the ladder can produce.
+
+*A decision can be replayed from the ledger.* A synthetic document is screened,
+stored, and screened again; the log recognises the second result. The stored
+verdict is checked against the log too, which is the stronger claim: the
+database has not drifted since. And the tamper this exists to catch is tested
+directly — deleting one line about what was not checked, which changes no
+decision and makes a case look cleaner, no longer matches the logged digest.
+
+*No raw document number reaches persistence.* Carried over from phase 3, which
+built the machinery but could not test the criterion because there was no
+persistence path to test it against. There is one now, and the guard is checked
+against a real database: every column of every table, on insert and on update,
+with the caught number masked in the refusal. Half of `test_persistence.py` is
+about what the guard must **allow** — hex digests, fixture numbers, whole
+serialised verdicts — because a guard that blocks ordinary writes is switched
+off within a week, and then the rule is enforced by nothing.
+
+### What the ledger stores, and what that costs
+
+A log entry is a **digest** of a verdict, not the verdict. Append-only storage
+and an enforceable retention policy cannot both apply to the same record, and
+holding a digest resolves it: the log is permanent, the verdict expires with the
+case record. The cost is stated rather than buried — once retention destroys a
+case, the log still proves a decision was made at a time and has not been
+altered, but not what it said. [ADR 0006](adr/0006-the-ledger-stores-a-digest.md)
+records the decision, the alternatives, and when to revisit it.
+
+### A bug worth recording
+
+The first version of the integration test rebuilt the log from the database and
+got a different Merkle root. SQLite has no timestamp type: `DateTime(timezone=
+True)` writes an offset and reads back a naive value. The instant survives, the
+offset does not, and the ledger commits to `isoformat()` — so a log rebuilt
+after a restart would have disagreed with every checkpoint ever published, with
+nothing to point at.
+
+`db.models.UtcDateTime` fixes it at the column type, and refuses a naive
+timestamp on the way in rather than assuming UTC. Guessing a timezone in an
+audit record is how a case ends up dated five and a half hours from when it
+happened. It was caught only because the test rebuilt from storage rather than
+from memory, which is the difference between testing a log and testing a list.
+
+### Slice B — the interfaces (not yet built)
+
+- `api/` — FastAPI routes, and the atomic write of the case record and its
+  ledger entry together.
+- `ui/console.py` — the officer console.
+- Alembic migrations; `create_all` is a test convenience, not a deployment path.
+- `deploy/`.

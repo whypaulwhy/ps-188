@@ -87,9 +87,15 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "extraction.pipeline",
         "extraction.preprocess",
         "extraction.qr_decode",
+        "db.guards",
+        "db.models",
+        "db.session",
+        "explain.renderer",
+        "ledger.hashchain",
+        "ledger.interface",
     }
 )
-"""The modules phase 0 implements for real. Everything else must still be a stub."""
+"""The modules implemented for real so far. Everything else must still be a stub."""
 
 
 def _discover() -> list[str]:

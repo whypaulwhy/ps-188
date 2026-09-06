@@ -188,7 +188,7 @@ Full detail in [`roadmap.md`](roadmap.md).
 | Phase 6 remainder | `eval/` — **so no performance figure exists anywhere yet**; the four Rung 2 tamper detectors |
 | Phase 7 | Face matching and presentation attack detection |
 | Phase 8 | Rung 3 contextual advisories |
-| Phase 9 | API, database, transparency ledger, officer console |
+| Phase 9 | Slice A (ledger, database, officer report) is done. Slice B — API, officer console, Alembic migrations — is not |
 
 TruFor, one of the phase-6 tamper detectors, has no model weights available and
 will ship reporting `INCONCLUSIVE` — which is what CLAUDE.md's testing rule asks

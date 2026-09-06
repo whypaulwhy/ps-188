@@ -19,6 +19,7 @@ dependencies = [
     "rapidocr-onnxruntime>=1.4.4",
     "scikit-image>=0.26.0",
     "signxml>=5.1.0",
+    "sqlalchemy>=2.0.52",
 ]
 
 [dependency-groups]
