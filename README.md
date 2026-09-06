@@ -85,7 +85,7 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 6 | Synthetic data, extraction, evaluation, tamper detection | ✅ |
 | 7 | Rung 2, biometrics | ◐ partial |
 | 8 | Rung 3, contextual advisories | ✅ |
-| 9 | Ledger, database, officer report | ◐ partial |
+| 9 | API, database, ledger, officer console | ✅ |
 
 **Working today:** the trust ladder and evidence contract; ICAO 9303 TD3 parsing
 and check-digit arithmetic; Verhoeff; two-digit-year century recovery; keyed
@@ -95,9 +95,11 @@ synthetic specimen and forgery generation; extraction, so a photograph produces
 a verdict end to end; four Rung 2 tamper detectors; Rung 3 repeat-crossing and
 watchlist advisories that provably cannot change a decision; encrypted-at-rest
 face embeddings with a retention window enforced in code; an evaluation
-harness that has run and produced a committed report; and an audit trail --
-a Merkle transparency log with signed checkpoints, a guarded SQLite store, and
-an officer report that states what was not checked on every case.
+harness that has run and produced a committed report; an audit trail -- a
+Merkle transparency log with signed checkpoints, a guarded SQLite store, and an
+officer report that states what was not checked on every case; and the shell
+around it -- an HTTP API, a server-rendered officer console, and Alembic
+migrations tested against the models.
 
 **Known gaps, deliberately:**
 
@@ -115,11 +117,18 @@ an officer report that states what was not checked on every case.
   than guessing and failing a genuine document.
 - **No chip reading.** Blocked on hardware, and every case says so rather than
   omitting the check.
-- **No API and no console yet.** The audit trail underneath them is built and
-  tested: a case is screened, stored, replayed and proved. What is missing is
-  the shell around it -- HTTP routes, the officer screen, and Alembic
-  migrations. `create_all` is a test convenience, not a deployment path. See
-  phase 9 slice B in [`docs/roadmap.md`](docs/roadmap.md).
+- **There is no authentication.** The console trusts the officer identifier it
+  is given, and the API is unauthenticated. That is a decision about how a
+  checkpoint authenticates its staff, and it needs an answer from the
+  deployment rather than a guess from us. Until it has one, `deploy/` binds
+  the port to localhost.
+- **Nothing publishes checkpoints yet.** The system signs them; carrying them
+  off the box is the step that makes the ledger worth anything, and
+  [ADR 0003](docs/adr/0003-transparency-log-over-fabric.md) is explicit that an
+  unpublished checkpoint proves nothing.
+- **Retention is decided but not enforced on a schedule.**
+  `core/privacy/retention.py` says what may be kept and for how long; nothing
+  yet runs to delete it.
 - **No face matching.** The storage side is done — embeddings are encrypted at
   rest under their own key, with a retention window the code enforces and a test
   that fails if any file calls an embedding anonymous. The matching side has no
@@ -144,6 +153,23 @@ waiting on a decision, a specimen or a piece of hardware rather than on code.
 pytest. `core/` is held at 100% branch coverage — it is pure functions, so there
 is no excuse. CI runs the same command on every push.
 
+To run the system itself, tell it where its database is and which crossing it
+is. Both are refused if absent — a default database path creates a second
+database rather than opening the real one, and a placeholder checkpoint name
+puts a false crossing on every audit record.
+
+```bash
+export SENTINELID_DB_URL="sqlite+pysqlite:///./sentinelid.db"
+export SENTINELID_CHECKPOINT_ID="raxaul-03"
+uv run alembic upgrade head
+uv run uvicorn api.app:create_app --factory
+```
+
+The officer console is then at `/console`, and `/health` reports what this
+deployment **cannot** do as well as that it is running. With no signing key
+configured it will say so, and refuse to publish a ledger checkpoint rather than
+sign one with a key it made up at start-up.
+
 ## Layout
 
 ```
@@ -157,7 +183,8 @@ extraction/    capture to text and codes (phase 6)
 ledger/        append-only Merkle audit trail, signed checkpoints
 db/            SQLite in WAL mode, guarded against storing a raw number
 explain/       the officer-facing report
-api/ ui/       the outward-facing shell (phase 9 slice B)
+api/           HTTP surface: screenings, cases, reviews, ledger proofs
+ui/            officer console, server-rendered, no JavaScript
 datagen/       synthetic specimens and forgeries (phase 6)
 eval/          the only sanctioned source of performance numbers
 tests/         unit, golden fixtures, integration

@@ -1,10 +1,10 @@
 # SENTINEL ID deployment image.
 #
-# Phase 0 builds the environment and runs the gate. There is no application
-# entrypoint yet: api/ and ui/ are stubs until phase 9, and this file will grow
-# a CMD when there is something to serve. Building it now keeps the deployment
-# path honest — if the image cannot be built, we find out today rather than in
-# phase 9.
+# The gate runs inside the image: one that cannot pass `make check` is not a
+# deployable image. That is checked at build time rather than trusted.
+#
+# The container serves the API and the officer console from one process. It does
+# not migrate on start-up — see the note by the CMD.
 
 FROM python:3.12-slim-bookworm
 
@@ -33,5 +33,14 @@ RUN uv run ruff check . \
     && uv run lint-imports \
     && uv run pytest -q
 
-# No CMD yet. Phase 9 adds:
-#   CMD ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Migrations are NOT run here. A container that migrates on start-up will, on a
+# checkpoint that restarts two instances after a power cut, run two migrations
+# against one SQLite file. Run it deliberately, once, before starting:
+#
+#   docker compose run --rm sentinelid uv run alembic upgrade head
+#
+# `--factory` because api.app has no module-level app: building one at import
+# time would read key files and open a database just to import the module, and
+# a missing key would surface as a broken import rather than as a missing key.
+EXPOSE 8000
+CMD ["uv", "run", "uvicorn", "api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

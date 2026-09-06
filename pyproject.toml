@@ -9,17 +9,22 @@ license = { text = "Proprietary" }
 # contract in core/contracts is built from Pydantic v2 models, so the package
 # cannot be imported without it. Nothing else is a runtime dependency yet.
 dependencies = [
+    "alembic>=1.19.2",
     "cryptography>=50.0.1",
+    "fastapi>=0.141.1",
+    "jinja2>=3.1.6",
     "numpy>=2.5.2",
     "opencv-python-headless>=5.0.0.93",
     "pillow>=12.3.0",
     "pydantic>=2.9,<3",
     "pyhanko>=0.37.0",
+    "python-multipart>=0.0.32",
     "pyzbar>=0.1.9",
     "rapidocr-onnxruntime>=1.4.4",
     "scikit-image>=0.26.0",
     "signxml>=5.1.0",
     "sqlalchemy>=2.0.52",
+    "uvicorn>=0.52.4",
 ]
 
 [dependency-groups]
@@ -30,6 +35,7 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.11",
     "import-linter>=2.1",
+    "httpx>=0.28.1",
 ]
 
 [build-system]
@@ -84,6 +90,20 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+# FastAPI declares dependencies, uploads and form fields as argument defaults.
+# That is the framework's documented idiom, not the mutable-default bug B008
+# exists to catch, so these calls are declared immutable rather than silenced
+# with a file-wide ignore that would also hide a real one.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+]
 
 [tool.ruff.lint.per-file-ignores]
 # Tests assert; that is the point.

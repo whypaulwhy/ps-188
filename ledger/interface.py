@@ -21,6 +21,11 @@ detector took, which differs on every run and is not part of the decision.
 Committing to it would mean a faithful replay never matched its own log entry.
 `model_version` is **not** excluded: a different model is a different basis for
 the decision, and the log should say so.
+
+**An officer's review is a second entry, never an edit of the first.** The log
+holds what happened to a case in order: what the system decided, and then what
+a person decided about it. Overwriting the first with the second is precisely
+the tamper this log exists to detect.
 """
 
 from __future__ import annotations
@@ -30,7 +35,9 @@ import json
 from dataclasses import dataclass
 from typing import Any, Final
 
-from core.contracts import Verdict
+from pydantic import BaseModel
+
+from core.contracts import OfficerReview, Verdict
 from ledger.hashchain import (
     Checkpoint,
     inclusion_proof,
@@ -73,6 +80,12 @@ def _strip_volatile(value: Any) -> Any:  # noqa: ANN401 - arbitrary decoded JSON
     return value
 
 
+def _canonical_bytes(record: BaseModel) -> bytes:
+    """Return the stable serialisation any audit record is digested from."""
+    decoded = json.loads(record.model_dump_json())
+    return json.dumps(_strip_volatile(decoded), sort_keys=True, separators=(",", ":")).encode()
+
+
 def canonical_verdict_bytes(verdict: Verdict) -> bytes:
     """Return the stable serialisation a verdict is digested from.
 
@@ -87,8 +100,24 @@ def canonical_verdict_bytes(verdict: Verdict) -> bytes:
     Returns:
         Canonical JSON bytes.
     """
-    decoded = json.loads(verdict.model_dump_json())
-    return json.dumps(_strip_volatile(decoded), sort_keys=True, separators=(",", ":")).encode()
+    return _canonical_bytes(verdict)
+
+
+def canonical_review_bytes(review: OfficerReview) -> bytes:
+    """Return the stable serialisation an officer review is digested from.
+
+    A review carries no volatile field, so nothing is stripped from it in
+    practice. It goes through the same function anyway: two canonical forms
+    that could drift apart is one more thing to get wrong, and the log has to
+    treat both kinds of record identically.
+
+    Args:
+        review: The officer's decision.
+
+    Returns:
+        Canonical JSON bytes.
+    """
+    return _canonical_bytes(review)
 
 
 class TransparencyLog:
@@ -135,6 +164,37 @@ class TransparencyLog:
         """
         digest = leaf_hash(canonical_verdict_bytes(verdict)).hex()
         return self.append(LedgerEntry(case_id, digest, recorded_at))
+
+    def record_review(self, review: OfficerReview) -> int:
+        """Record an officer's decision as its own entry.
+
+        A review never replaces the verdict's entry. It is appended after it, so
+        the log holds the sequence of what happened to a case rather than only
+        its latest state.
+
+        Args:
+            review: The officer's decision.
+
+        Returns:
+            The index of the new entry.
+        """
+        digest = leaf_hash(canonical_review_bytes(review)).hex()
+        return self.append(LedgerEntry(review.case_id, digest, review.recorded_at))
+
+    def matches_review(self, review: OfficerReview, *, index: int) -> bool:
+        """Report whether a review digests to what was logged at an index.
+
+        Args:
+            review: The review to check.
+            index: The entry to compare against.
+
+        Returns:
+            Whether the digests agree.
+        """
+        if not 0 <= index < len(self._entries):
+            return False
+        digest = leaf_hash(canonical_review_bytes(review)).hex()
+        return self._entries[index].verdict_digest == digest
 
     def matches(self, verdict: Verdict, *, index: int) -> bool:
         """Report whether a verdict digests to what was logged at an index.

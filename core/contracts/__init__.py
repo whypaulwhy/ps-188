@@ -17,6 +17,7 @@ from core.contracts.enums import (
 from core.contracts.evidence import Evidence
 from core.contracts.finding import Finding
 from core.contracts.provenance import Provenance
+from core.contracts.review import REVIEW_OUTCOMES, OfficerReview
 from core.contracts.subject import (
     Artefact,
     DecodedCode,
@@ -30,6 +31,7 @@ from core.contracts.verdict import CLEARING_BASIS, Verdict
 __all__ = [
     "CLEARING_BASIS",
     "RESULTS_BY_RUNG",
+    "REVIEW_OUTCOMES",
     "SCORED_RUNGS",
     "Artefact",
     "Decision",
@@ -37,6 +39,7 @@ __all__ = [
     "DocumentType",
     "Evidence",
     "Finding",
+    "OfficerReview",
     "Provenance",
     "Result",
     "Rung",

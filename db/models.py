@@ -122,6 +122,42 @@ class LedgerLeaf(Base):
     """When the entry was appended."""
 
 
+class ReviewRecord(Base):
+    """One officer's decision on one case.
+
+    A row here never replaces a `CaseRecord`. The verdict keeps saying what the
+    automated checks established; this says what a person decided about it, and
+    both are true at once. See :class:`core.contracts.review.OfficerReview` for
+    why that separation is not negotiable.
+    """
+
+    __tablename__ = "review_record"
+
+    review_index: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    """Order of review within this deployment. A case may be reviewed twice."""
+
+    case_id: Mapped[str] = mapped_column(String(128), index=True)
+    """Which case was reviewed."""
+
+    outcome: Mapped[str] = mapped_column(String(16))
+    """What the officer decided: `CLEARED` or `REJECTED`."""
+
+    system_decision: Mapped[str] = mapped_column(String(16))
+    """What the system had decided, so an override is visible as one."""
+
+    officer_id: Mapped[str] = mapped_column(String(64))
+    """Who decided. An unattributed override is not a review."""
+
+    note: Mapped[str] = mapped_column(Text)
+    """Why, in the officer's own words."""
+
+    review_json: Mapped[str] = mapped_column(Text)
+    """The full review, so it can be checked against its ledger entry."""
+
+    recorded_at: Mapped[datetime.datetime] = mapped_column(UtcDateTime())
+    """When the officer decided."""
+
+
 def metadata() -> object:
     """Return the SQLAlchemy metadata for all tables.
 

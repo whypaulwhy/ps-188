@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Not found - SENTINEL ID{% endblock %}
+
+{% block main %}
+<h1>No such case</h1>
+<div class="card missing">
+  <p>This checkpoint holds no case <strong>{{ case_id }}</strong>.</p>
+  <p class="rule">
+    That is not the same as the case having been cleared, rejected or deleted.
+    It means nothing by that identifier was ever recorded here. If you expected
+    one, check the identifier and which checkpoint you are on.
+  </p>
+</div>
+<p><a href="{{ base }}/">Back to the queue</a></p>
+{% endblock %}

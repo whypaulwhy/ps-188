@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Queue - SENTINEL ID{% endblock %}
+{% block where %}{{ checkpoint_id }}{% endblock %}
+
+{% block main %}
+<h1>Screening queue</h1>
+
+{% if unavailable %}
+{# What this checkpoint cannot do, on the first screen rather than in a log. #}
+<div class="card missing">
+  <strong>This checkpoint is not fully equipped.</strong>
+  <ul>{% for line in unavailable %}<li>{{ line }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<h2>Waiting for a person ({{ awaiting|length }})</h2>
+{% if awaiting %}
+<table>
+  <tr><th>Case</th><th>System decision</th><th>Not checked</th><th>Recorded</th></tr>
+  {% for item in awaiting %}
+  <tr>
+    <td class="id"><a href="{{ base }}/case/{{ item.case_id }}">{{ item.case_id }}</a></td>
+    <td class="{{ item.verdict.decision.value }}">{{ item.verdict.decision.value.replace("_", " ") }}</td>
+    <td>{{ item.verdict.not_checked|length }} thing{{ "" if item.verdict.not_checked|length == 1 else "s" }}</td>
+    <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">Nothing is waiting. This is not a statement that every crossing was checked.</p>
+{% endif %}
+
+<h2>Already decided ({{ settled|length }})</h2>
+{% if settled %}
+<table>
+  <tr><th>Case</th><th>System</th><th>Standing</th><th>Decided by</th><th>Recorded</th></tr>
+  {% for item in settled %}
+  <tr>
+    <td class="id"><a href="{{ base }}/case/{{ item.case_id }}">{{ item.case_id }}</a></td>
+    <td class="{{ item.verdict.decision.value }}">{{ item.verdict.decision.value.replace("_", " ") }}</td>
+    <td class="{{ item.standing_decision.value }}">{{ item.standing_decision.value.replace("_", " ") }}</td>
+    <td>{% if item.reviews %}{{ item.reviews[-1].officer_id }}{% else %}the checks{% endif %}</td>
+    <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">No cases have been decided at this checkpoint yet.</p>
+{% endif %}
+{% endblock %}

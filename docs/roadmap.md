@@ -437,7 +437,7 @@ working as intended.
 
 ---
 
-## Phase 9 — The shell
+## Phase 9 — The shell ✅
 
 Everything that touches the outside world, built last because `core/` and
 `detectors/` must never depend on it. Split in two: the audit trail first,
@@ -502,10 +502,81 @@ audit record is how a case ends up dated five and a half hours from when it
 happened. It was caught only because the test rebuilt from storage rather than
 from memory, which is the difference between testing a log and testing a list.
 
-### Slice B — the interfaces (not yet built)
+### Slice B — the interfaces ✅
 
-- `api/` — FastAPI routes, and the atomic write of the case record and its
-  ledger entry together.
-- `ui/console.py` — the officer console.
-- Alembic migrations; `create_all` is a test convenience, not a deployment path.
-- `deploy/`.
+- `api/settings.py`: configuration that refuses to invent a database, a
+  checkpoint identity or a signing key.
+- `api/screening.py`: the runner that assembles the deployment's detectors and
+  converts a detector that raises into evidence saying so.
+- `api/routes.py`, `api/schemas.py`, `api/deps.py`, `api/app.py`.
+- `db/recording.py`: the case and its ledger entry written in one transaction.
+- `ui/console.py` and `ui/templates/`: server-rendered, no JavaScript.
+- `db/migrations/`: a real Alembic chain, tested against the models.
+- `deploy/`: an entrypoint, a healthcheck and file-mounted secrets.
+
+**What the shell refuses to do**, each because returning something would be
+worse than returning nothing:
+
+*It will not sign a checkpoint without a key.* `/ledger/checkpoint` answers 503.
+A signature made with a key generated at start-up cannot be checked against
+anything published, and it would read as proof.
+
+*It will not invent a checkpoint identity or a database path.* Both are refused
+at start-up. A placeholder identity puts a false crossing on real audit records;
+a default database path creates a second database rather than opening the real
+one.
+
+*It will not drop an unreadable capture.* Bytes that are not an image still
+produce a case, a verdict of `MANUAL_REVIEW`, and a stated reason. A border that
+ignores malformed input has a gap exactly where someone would push.
+
+*It will not edit an officer's note.* A note containing something shaped like a
+document number is refused with advice about what to remove. Stripping it
+silently would leave a review whose reasoning had been edited by a regular
+expression.
+
+*It will not answer a failure with silence.* Any unhandled error returns 503 and
+says the document is unscreened, because the one reading that must never be
+available is "nothing came back, so nothing was wrong".
+
+### An officer's decision is a record, not an edit
+
+Most cases resolve to `MANUAL_REVIEW`, so the officer's decision is the normal
+outcome rather than an edge case. It is stored as its own record and its own
+ledger entry; the verdict is never rewritten.
+[ADR 0007](adr/0007-officer-decisions-are-appended.md) has the reasoning, of
+which the short form is that overwriting `Verdict.decision` would make the
+record claim the system verified something it did not, and would set off the
+ledger's own tamper detection as a matter of routine.
+
+An officer may clear a document the checks could not, and may reject one nothing
+was found wrong with. Refusing that would not prevent the override; it would
+move it onto paper. What is required is a named officer and a note.
+
+### Three tests worth knowing about
+
+**A third party verifies the log using only HTTP.**
+`tests/integration/test_api.py` fetches the signed checkpoint, the public key,
+the leaf and its proof over the API, and verifies them without touching the
+database. That is the claim the whole ledger exists to support.
+
+**Every registered detector is assembled.** A detector that exists but is never
+built produces no evidence, not even to say it did not run — the same defect as
+a missing check, wearing different clothes. The test compares the registry
+against what the deployment assembles.
+
+**The migration and the models are compared, not assumed.** Alembic's own
+comparison runs against a freshly migrated database. Without it, a column added
+to `db/models.py` would pass every test — they build their schema with
+`create_all` — and fall over on the next deployment.
+
+### What phase 9 leaves for a real deployment
+
+- Authentication. There is none: the console trusts the officer identifier it is
+  given. That is a decision about how a checkpoint authenticates staff, and it
+  needs an answer from the deployment before this is exposed beyond localhost.
+- Checkpoint publication. The system signs checkpoints; nothing yet carries them
+  off the box, and ADR 0003 is explicit that an unpublished checkpoint proves
+  nothing.
+- Retention enforcement. `core/privacy/retention.py` decides what may be kept;
+  nothing yet runs on a schedule to delete it.

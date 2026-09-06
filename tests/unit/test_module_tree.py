@@ -93,6 +93,15 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "explain.renderer",
         "ledger.hashchain",
         "ledger.interface",
+        "api.app",
+        "api.deps",
+        "api.routes",
+        "api.schemas",
+        "api.screening",
+        "api.settings",
+        "core.contracts.review",
+        "db.recording",
+        "ui.console",
     }
 )
 """The modules implemented for real so far. Everything else must still be a stub."""

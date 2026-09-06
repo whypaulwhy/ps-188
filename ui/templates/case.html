@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ case.case_id }} - SENTINEL ID{% endblock %}
+{% block where %}{{ case.checkpoint_id }}</span>{% endblock %}
+
+{% block main %}
+<h1>Case {{ case.case_id }}</h1>
+<p class="decision {{ verdict.decision.value }}">{{ verdict.decision.value.replace("_", " ") }}</p>
+
+<div class="card">
+  {% for sentence in verdict.basis %}<p>{{ sentence }}</p>{% endfor %}
+  {% if verdict.decision.value == "CLEARED" %}
+  <p class="rule">
+    This means the issuing authority's signature on the document was verified.
+    It is not a statement about the person presenting it.
+  </p>
+  {% endif %}
+</div>
+
+{# The honesty rule. On the page, under the decision, on every case. #}
+<h2>What was not checked</h2>
+<div class="card missing">
+  {% if verdict.not_checked %}
+  <ul>{% for line in verdict.not_checked %}<li>{{ line }}</li>{% endfor %}</ul>
+  {% else %}
+  <p>
+    No check reported that it could not be completed. That is not the same as
+    everything having been checked: only the checks below were run.
+  </p>
+  {% endif %}
+</div>
+
+<h2>What was found</h2>
+{% for finding in findings %}
+<div class="card">
+  <span class="tag {{ finding.severity.name }}">{{ finding.severity.name }}</span>
+  <strong>{{ finding.headline }}</strong>
+  {% for line in finding.detail %}<p>{{ line }}</p>{% endfor %}
+  {% if finding.standard_ref %}<p class="rule">Rule: {{ finding.standard_ref }}</p>{% endif %}
+</div>
+{% else %}
+<p class="empty">No check produced a result to report.</p>
+{% endfor %}
+
+{% if verdict.advisories %}
+<h2>Context, which did not affect this decision</h2>
+{% for advisory in verdict.advisories %}
+<div class="card">
+  {% for line in advisory.detail %}<p>{{ line }}</p>{% else %}<p>{{ advisory.headline }}</p>{% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+
+{% if case.reviews %}
+<h2>Officer decisions</h2>
+{% for review in case.reviews %}
+<div class="card">
+  <span class="tag {{ 'CRITICAL' if review.overrides_the_system else 'INFO' }}">
+    {{ review.outcome.value.replace("_", " ") }}
+  </span>
+  <strong>{{ review.officer_id }}</strong>
+  <span class="rule">{{ review.recorded_at.strftime("%Y-%m-%d %H:%M") }}</span>
+  {% if review.overrides_the_system %}
+  <p class="rule">
+    The checks had decided {{ review.system_decision.value.replace("_", " ") }}.
+    That record is unchanged; this decision was added after it.
+  </p>
+  {% endif %}
+  <p>{{ review.note }}</p>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2>Record a decision</h2>
+{% if error %}<div class="card error">{{ error }}</div>{% endif %}
+<form method="post" action="{{ base }}/case/{{ case.case_id }}/review">
+  <label for="officer_id">Your officer identifier</label>
+  <input id="officer_id" name="officer_id" required maxlength="64" autocomplete="off">
+
+  <label for="outcome">Decision</label>
+  <select id="outcome" name="outcome" required>
+    {% for outcome in outcomes %}
+    <option value="{{ outcome }}">{{ outcome.replace("_", " ") }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="note">Why (required, and part of the permanent record)</label>
+  <textarea id="note" name="note" rows="4" required maxlength="2000"></textarea>
+  <p class="rule">
+    Do not write a document number here. Describe what you saw. Numbers are
+    stored only as digests, and a note containing one is refused.
+  </p>
+
+  <button type="submit">Record this decision</button>
+</form>
+
+<h2>The report as it prints</h2>
+<pre>{{ report }}</pre>
+
+<p class="rule">Ledger entry {{ case.leaf_index }}.</p>
+{% endblock %}

@@ -3,9 +3,12 @@
 # One service. There is no database container: the system uses SQLite in WAL
 # mode on a mounted volume, which is what a checkpoint box actually runs.
 #
-# Phase 0 has nothing to serve, so this file defines the environment and the
-# volumes and stops there. Phase 9 adds the port mapping and the healthcheck
-# once api/ exists.
+# The port is bound to the loopback address. A checkpoint console reachable from
+# the network is a console reachable from whatever else is on that network; put
+# a reverse proxy with TLS in front of it deliberately rather than by default.
+#
+# Keys are files, not environment variables. An environment variable is visible
+# to anything that can read /proc and is captured by `docker inspect`.
 
 services:
   sentinelid:
@@ -13,17 +16,37 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     image: sentinelid:dev
-    # No ports published yet: api/ is a stub until phase 9.
+    ports:
+      - "127.0.0.1:8000:8000"
     environment:
-      # Per-deployment salt for hashing document numbers. Never committed,
-      # never logged, never shared between deployments. Rule 3 of CLAUDE.md.
-      SENTINELID_HASH_SALT: ${SENTINELID_HASH_SALT:?set a per-deployment salt}
       SENTINELID_DB_URL: sqlite+pysqlite:////var/lib/sentinelid/sentinelid.db
+      # Which crossing this is. Stamped on every audit record, so there is no
+      # default: a placeholder here would put a false checkpoint on real cases.
+      SENTINELID_CHECKPOINT_ID: ${SENTINELID_CHECKPOINT_ID:?name this checkpoint}
+      # Per-deployment key for hashing document numbers, held outside the
+      # database. Never committed, never logged, never shared between
+      # deployments. Rule 3 of CLAUDE.md and ADR 0005.
+      SENTINELID_HASH_KEY_FILE: /run/secrets/sentinelid-hash-key
+      # Signs transparency-log checkpoints. Without it the system runs and every
+      # case says no checkpoint can be published; it never signs with a
+      # stand-in.
+      SENTINELID_LEDGER_KEY_FILE: /run/secrets/sentinelid-ledger-key
+    secrets:
+      - sentinelid-hash-key
+      - sentinelid-ledger-key
     volumes:
       # Case records and the transparency log. Survives image rebuilds.
       - sentinelid-data:/var/lib/sentinelid
       # Model artefacts, mounted read-only and pinned by digest at deploy time.
       - ./models:/opt/sentinelid/models:ro
+    healthcheck:
+      # /health reports what the deployment cannot do as well as that it is up.
+      test: ["CMD", "uv", "run", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     read_only: true
     tmpfs:
       - /tmp
@@ -31,3 +54,12 @@ services:
 
 volumes:
   sentinelid-data:
+
+secrets:
+  # Generate once per deployment, back them up, and keep them off this host's
+  # image. Losing the hashing key makes every stored digest unmatchable; losing
+  # the signing key ends the checkpoint chain.
+  sentinelid-hash-key:
+    file: ./secrets/hash.key
+  sentinelid-ledger-key:
+    file: ./secrets/ledger.pem
