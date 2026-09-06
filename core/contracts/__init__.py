@@ -17,18 +17,32 @@ from core.contracts.enums import (
 from core.contracts.evidence import Evidence
 from core.contracts.finding import Finding
 from core.contracts.provenance import Provenance
+from core.contracts.subject import (
+    Artefact,
+    DecodedCode,
+    DocumentType,
+    Subject,
+    TextZone,
+    ZoneName,
+)
 from core.contracts.verdict import CLEARING_BASIS, Verdict
 
 __all__ = [
     "CLEARING_BASIS",
     "RESULTS_BY_RUNG",
     "SCORED_RUNGS",
+    "Artefact",
     "Decision",
+    "DecodedCode",
+    "DocumentType",
     "Evidence",
     "Finding",
     "Provenance",
     "Result",
     "Rung",
     "Severity",
+    "Subject",
+    "TextZone",
     "Verdict",
+    "ZoneName",
 ]

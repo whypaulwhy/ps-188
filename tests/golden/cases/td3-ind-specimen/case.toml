@@ -8,6 +8,7 @@
 id = "td3-ind-specimen"
 description = "A synthetic Indian passport strip with correct check digits."
 detector = "rung1.mrz_checkdigits"
+declared_type = "INDIAN_PASSPORT"
 phase = 5
 input = "input.mrz.txt"
 

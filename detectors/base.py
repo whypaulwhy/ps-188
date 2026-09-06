@@ -18,11 +18,11 @@ Two rules are enforced here rather than left to review:
   defect.
 
 .. note::
-   The ``subject`` a detector receives is typed as :class:`object` in phase 0.
-   The extraction contract that will replace it — the normalised image, the
-   located zones, the decoded payloads — is deliberately not invented here; it
-   is designed in phase 2 against real captures. Detectors are written from
-   phase 4 onwards, by which time the type exists.
+   The ``subject`` a detector receives is :class:`~core.contracts.subject.Subject`,
+   defined in phase 2. It carries decoded codes, located text zones, the raw
+   artefact bytes and an explicit record of what extraction could not do. It is
+   deliberately minimal and is expected to grow in phase 6, when images first
+   flow through it.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ import re
 from abc import ABC, abstractmethod
 from typing import ClassVar, Final
 
-from core.contracts import Evidence, Rung
+from core.contracts import Evidence, Rung, Subject
 
 DETECTOR_ID: Final[re.Pattern[str]] = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$")
 """Dotted lowercase identifier, matching the pattern the evidence contract enforces."""
@@ -53,7 +53,7 @@ class Detector(ABC):
     """The trust rung this detector's output sits on. Fixes what it is allowed to report."""
 
     @abstractmethod
-    def applies_to(self, subject: object) -> bool:
+    def applies_to(self, subject: Subject) -> bool:
         """Report whether this detector has anything to say about a subject.
 
         A detector that does not apply is skipped and produces no evidence. Use
@@ -70,7 +70,7 @@ class Detector(ABC):
         """
 
     @abstractmethod
-    def run(self, subject: object) -> tuple[Evidence, ...]:
+    def run(self, subject: Subject) -> tuple[Evidence, ...]:
         """Examine a subject and report what was found.
 
         Args:

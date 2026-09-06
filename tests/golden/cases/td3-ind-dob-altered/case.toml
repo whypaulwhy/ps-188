@@ -8,6 +8,7 @@
 id = "td3-ind-dob-altered"
 description = "The same synthetic passport with the date of birth changed in place."
 detector = "rung1.mrz_checkdigits"
+declared_type = "INDIAN_PASSPORT"
 phase = 5
 input = "input.mrz.txt"
 

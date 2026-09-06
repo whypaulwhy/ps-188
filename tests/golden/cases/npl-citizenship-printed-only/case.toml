@@ -8,6 +8,7 @@
 id = "npl-citizenship-printed-only"
 description = "A Nepali citizenship certificate. No strip, no signature, nothing to verify."
 detector = "rung1.mrz_checkdigits"
+declared_type = "NEPALI_CITIZENSHIP_CERTIFICATE"
 phase = 5
 input = "input.fields.json"
 

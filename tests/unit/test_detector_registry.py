@@ -13,9 +13,9 @@ from collections.abc import Iterator
 
 import pytest
 
-from core.contracts import Evidence, Result, Rung
+from core.contracts import Evidence, Result, Rung, Subject
 from detectors import Detector, clear_registry, get, register, registered
-from tests.support import DIGEST
+from tests.support import DIGEST, subject
 
 
 @pytest.fixture(autouse=True)
@@ -32,11 +32,11 @@ class _Stub(Detector):
     id = "test.stub"
     rung = Rung.DETERMINISTIC
 
-    def applies_to(self, subject: object) -> bool:
+    def applies_to(self, document: Subject) -> bool:
         """Apply to everything."""
         return True
 
-    def run(self, subject: object) -> tuple[Evidence, ...]:
+    def run(self, document: Subject) -> tuple[Evidence, ...]:
         """Report a passing deterministic check."""
         return (
             Evidence(
@@ -59,7 +59,7 @@ def test_a_detector_cannot_be_instantiated_without_both_methods() -> None:
         id = "test.partial"
         rung = Rung.DETERMINISTIC
 
-        def applies_to(self, subject: object) -> bool:
+        def applies_to(self, document: Subject) -> bool:
             return True
 
     with pytest.raises(TypeError):
@@ -74,7 +74,7 @@ def test_registering_returns_the_class_unchanged() -> None:
 
 def test_a_detector_returns_evidence_not_a_bool() -> None:
     """The contract is evidence in, evidence out. No bare values anywhere."""
-    (item,) = _Stub().run(object())
+    (item,) = _Stub().run(subject())
 
     assert isinstance(item, Evidence)
     assert item.rung is Rung.DETERMINISTIC

@@ -8,6 +8,7 @@
 id = "td3-ind-strip-unreadable"
 description = "A partially captured strip. Not a forgery signal; a scan quality problem."
 detector = "rung1.mrz_checkdigits"
+declared_type = "INDIAN_PASSPORT"
 phase = 5
 input = "input.mrz.txt"
 

@@ -10,7 +10,17 @@ from __future__ import annotations
 import datetime
 from typing import Any, Final
 
-from core.contracts import Evidence, Provenance, Result, Rung
+from core.contracts import (
+    Artefact,
+    DocumentType,
+    Evidence,
+    Provenance,
+    Result,
+    Rung,
+    Subject,
+    TextZone,
+    ZoneName,
+)
 
 DIGEST: Final[str] = "a" * 64
 """A well-formed lowercase hex SHA-256 digest, used wherever the value is irrelevant."""
@@ -79,3 +89,31 @@ def provenance(**overrides: Any) -> Provenance:  # noqa: ANN401
     }
     fields.update(overrides)
     return Provenance(**fields)
+
+
+def subject(**overrides: Any) -> Subject:  # noqa: ANN401
+    """Build a valid subject carrying a readable passport strip.
+
+    Args:
+        **overrides: Any field to replace on the constructed subject.
+
+    Returns:
+        The constructed subject.
+    """
+    data = b"a passport strip"
+    fields: dict[str, Any] = {
+        "provenance": provenance(),
+        "declared_type": DocumentType.INDIAN_PASSPORT,
+        "artefacts": (
+            Artefact(role="document_front", media_type="text/plain", sha256=DIGEST, data=data),
+        ),
+        "zones": (
+            TextZone(
+                name=ZoneName.MRZ,
+                lines=("P<INDSPECIMEN<<TEST<CASE<<<<<<<<<<<<<<<<<<<<",),
+                complete=True,
+            ),
+        ),
+    }
+    fields.update(overrides)
+    return Subject(**fields)

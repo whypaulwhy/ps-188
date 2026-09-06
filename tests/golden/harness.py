@@ -21,6 +21,7 @@ without anything here changing.
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
 import tomllib
@@ -28,11 +29,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
-from core.contracts import Evidence
+from core.contracts import (
+    Artefact,
+    DocumentType,
+    Evidence,
+    Provenance,
+    Subject,
+    TextZone,
+    ZoneName,
+)
 
 HERE: Final[Path] = Path(__file__).parent
 CASES_DIR: Final[Path] = HERE / "cases"
 VECTORS_DIR: Final[Path] = HERE / "vectors"
+
+FIXTURE_CAPTURED_AT: Final[datetime.datetime] = datetime.datetime(
+    2026, 1, 1, 12, 0, tzinfo=datetime.UTC
+)
+"""A fixed capture time, so a subject built from a fixture is byte-for-byte reproducible."""
 
 IGNORED_FIELDS: Final[frozenset[str]] = frozenset({"runtime_ms", "model_version"})
 """Fields excluded from golden comparison. See the module docstring for why these two."""
@@ -62,6 +76,7 @@ class GoldenCase:
     directory: Path
     description: str
     detector_id: str
+    declared_type: DocumentType
     phase: int
     input_path: Path
     licence: str
@@ -73,15 +88,74 @@ class GoldenCase:
         """Return the digest of the fixture file as it exists on disk."""
         return hashlib.sha256(self.input_path.read_bytes()).hexdigest()
 
-    def subject(self) -> bytes:
-        """Return the fixture as the bytes a detector will be handed.
+    def subject(self) -> Subject:
+        """Build the `Subject` a detector will be handed for this fixture.
 
-        Phase 0 and 1 have no extraction contract, so a subject is raw bytes.
-        When phase 2 defines what a detector actually receives — the normalised
-        image, the located zones, the decoded payloads — this method is the one
-        place that changes.
+        This stands in for the extraction pipeline, which does not exist until
+        phase 6. It performs no recognition of its own: an `.mrz.txt` fixture
+        becomes an MRZ zone holding exactly the lines in the file, and a
+        `.fields.json` fixture becomes a visual inspection zone holding its
+        printed fields. Nothing is repaired, and no zone is invented — a
+        document with no strip simply has no MRZ zone, which is what makes the
+        `NOT_APPLICABLE` cases meaningful.
         """
-        return self.input_path.read_bytes()
+        data = self.input_path.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        suffixes = "".join(self.input_path.suffixes)
+
+        if suffixes.endswith(".mrz.txt"):
+            media_type = "text/plain"
+            zones = (
+                TextZone(
+                    name=ZoneName.MRZ,
+                    lines=tuple(data.decode("utf-8").splitlines()),
+                    complete=True,
+                ),
+            )
+        else:
+            media_type = "application/json"
+            zones = (
+                TextZone(
+                    name=ZoneName.VISUAL_INSPECTION,
+                    lines=_flatten(json.loads(data.decode("utf-8"))),
+                    complete=True,
+                ),
+            )
+
+        return Subject(
+            provenance=Provenance(
+                source_id=self.case_id,
+                sha256=digest,
+                media_type=media_type,
+                byte_size=len(data),
+                captured_at=FIXTURE_CAPTURED_AT,
+                received_at=FIXTURE_CAPTURED_AT,
+                checkpoint_id="golden-corpus",
+            ),
+            declared_type=self.declared_type,
+            artefacts=(
+                Artefact(role="document_front", media_type=media_type, sha256=digest, data=data),
+            ),
+            zones=zones,
+        )
+
+
+def _flatten(value: Any, prefix: str = "") -> tuple[str, ...]:  # noqa: ANN401
+    """Render a printed-field record as one `key: value` line per leaf.
+
+    Args:
+        value: The parsed record, or any nested part of it.
+        prefix: The dotted path to this part.
+
+    Returns:
+        One line per leaf, in document order.
+    """
+    if isinstance(value, dict):
+        lines: list[str] = []
+        for key, nested in value.items():
+            lines.extend(_flatten(nested, f"{prefix}.{key}" if prefix else str(key)))
+        return tuple(lines)
+    return (f"{prefix}: {value}",)
 
 
 def load_case(directory: Path) -> GoldenCase:
@@ -122,6 +196,7 @@ def load_case(directory: Path) -> GoldenCase:
         directory=directory,
         description=case["description"],
         detector_id=case["detector"],
+        declared_type=DocumentType(case["declared_type"]),
         phase=case["phase"],
         input_path=directory / case["input"],
         licence=fixture["licence"],

@@ -8,6 +8,7 @@
 id = "btn-cid-printed-only"
 description = "A Bhutanese citizenship identity card. No strip, no signature."
 detector = "rung1.mrz_checkdigits"
+declared_type = "BHUTANESE_CID"
 phase = 5
 input = "input.fields.json"
 

@@ -8,6 +8,7 @@
 id = "td3-icao-specimen"
 description = "The published ICAO specimen passport. Every check digit is correct."
 detector = "rung1.mrz_checkdigits"
+declared_type = "UNRECOGNISED"
 phase = 5
 input = "input.mrz.txt"
 
