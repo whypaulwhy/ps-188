@@ -91,17 +91,41 @@ integration is simply not demonstrable until there are images.
 
 ---
 
-## Phase 3 — Privacy
+## Phase 3 — Privacy ✅
 
 Before anything is persisted, decide what may be persisted.
 
-- `core/privacy/hashing.py`: per-deployment salted hashing of document numbers.
-- `core/privacy/masking.py`: display forms that never reveal a full number.
-- `core/privacy/retention.py`: retention windows per artefact category.
+- `core/privacy/identifiers.py`: `RawIdentifier`, a number in the clear that
+  masks itself in `str`, `repr`, f-strings and logs, and that Pydantic refuses
+  to give a schema — so a contract field of that type fails at class definition.
+- `core/privacy/hashing.py`: HMAC-SHA256 with a per-deployment key, domain
+  separated by document kind. See [ADR 0005](adr/0005-keyed-hashing-for-document-numbers.md)
+  for why a keyed hash rather than a salted one.
+- `core/privacy/masking.py`: display forms that never reveal a full number, and
+  that hide a short value completely rather than returning it intact.
+- `core/privacy/retention.py`: a `RetentionPolicy` that refuses to construct
+  unless every artefact category has an explicit window, with no defaults and
+  no unbounded option.
 
-**Exit criteria.** A test that fails if a raw Aadhaar number can reach any
-persistence path. Aadhaar Act 2016 s.29 and s.37 are the constraint, not a
-preference.
+**Exit criterion partly met, and the gap is real.** The criterion was a test
+that fails if a raw Aadhaar number can reach any *persistence path*. There is no
+persistence path: `db/` is stubs until phase 9. What phase 3 delivers instead is
+three checks that can be made today, in `tests/unit/test_no_raw_identifiers.py`:
+
+- no file committed to this repository contains a twelve-digit number that is
+  Verhoeff-valid and begins 2 to 9, which is the shape of an issuable Aadhaar
+  number (the phase-1 fixtures begin with 0 deliberately);
+- only `core/privacy/hashing.py` and `core/privacy/identifiers.py` read a
+  number in the clear, enforced by scanning for `reveal()` call sites;
+- no contract field can carry a raw identifier.
+
+The database test is listed under phase 9 and this phase is not complete
+without it.
+
+**Honesty note carried forward.** These digests are pseudonymous, not anonymous.
+An Aadhaar number has about 9x10^11 possible values, so anyone holding both the
+deployment key and the database recovers every number by enumeration. That is
+recorded in ADR 0005 and in the threat model rather than left implicit.
 
 ---
 
@@ -191,3 +215,8 @@ Everything that touches the outside world, built last because `core/` and
 **Exit criteria.** The officer console states what was not checked on every
 case. A screening decision can be replayed from the ledger and produces the
 same verdict.
+
+**Carried over from phase 3.** A test that fails if a raw document number can
+reach any persistence path. Phase 3 built the machinery that makes this a type
+error and proved it three other ways, but the criterion names persistence, and
+persistence is built here.

@@ -30,6 +30,7 @@ Two consequences run through the whole design:
 | Face embeddings | Partially invertible by model inversion. Personal data, not anonymous features. |
 | The audit trail | If it can be edited after the fact, no decision this system made is defensible. |
 | Issuer trust anchors | An attacker who can add a key can mint documents that clear at Rung 0. This is the only path to a forged clearance. |
+| The deployment hashing key | Held outside the database. With it and the database, every stored document number is recoverable by enumeration. ADR 0005. |
 
 ## Adversaries
 
@@ -148,6 +149,10 @@ visible rather than discovered later.
 | Attack | Mitigation |
 |---|---|
 | Adding a forged issuer key to the trust store | Trust anchors are reviewed configuration, pinned by digest. Phase 4. This is the highest-value target in the system. |
+| Taking the database to recover document numbers | Numbers are stored as HMAC-SHA256 digests under a per-deployment key held outside the database, so the database alone is not enough. ADR 0005. |
+| Taking the deployment key **and** the database | Recovers every number by enumeration: an Aadhaar number has only about 9x10^11 possible values. No construction prevents this, which is why the key is listed as an asset above. |
+| A raw number reaching a log, a traceback or a payload | `RawIdentifier` masks itself in `str`, `repr`, f-strings and logs, and has no Pydantic schema, so it cannot be a contract field. Its `reveal()` call sites are enforced by test. |
+| Keeping biometrics after the case that justified them | `RetentionPolicy` refuses to construct if the face embedding window exceeds the case record window, and refuses to construct at all if any category is unanswered. |
 | Editing a past decision in the database | Append-only transparency log with signed checkpoints published off-box. Phase 9, ADR 0003. |
 | A detector reaching into the database to change what it reports | Architecture boundary, enforced by import-linter in CI. Rule 5. |
 | Tuning a Rung 2 model to clear a specific document | Structurally impossible. Rung 2 has no vocabulary for a clearing result, and `Verdict` refuses a clearance without Rung 0 or Rung 1 support. |
