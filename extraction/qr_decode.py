@@ -5,4 +5,6 @@ from __future__ import annotations
 
 def decode_qr(image: object) -> list[bytes]:
     """Return every decoded QR payload found in an image. Not yet implemented."""
-    raise NotImplementedError("extraction.qr_decode lands in phase 4")
+    raise NotImplementedError(
+        "extraction.qr_decode lands in phase 6, with the images that can test it"
+    )

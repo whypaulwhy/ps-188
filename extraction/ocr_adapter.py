@@ -5,4 +5,6 @@ from __future__ import annotations
 
 def read_text(image: object, *, zone: str | None = None) -> list[str]:
     """Return recognised text lines for a whole image or one named zone. Not yet implemented."""
-    raise NotImplementedError("extraction.ocr_adapter lands in phase 2")
+    raise NotImplementedError(
+        "extraction.ocr_adapter lands in phase 6, with the images that can test it"
+    )

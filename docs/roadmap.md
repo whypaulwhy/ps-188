@@ -55,20 +55,39 @@ and evidence, not clearance. That reframes what phase 6 has to measure.
 
 ---
 
-## Phase 2 — Extraction and the standards library
+## Phase 2 — The standards library and the extraction contract ✅
 
-The deterministic groundwork. No inference anywhere in this phase.
+The deterministic groundwork. No inference anywhere in this phase, and no
+pixels.
 
-- `core/standards/mrz/`: ICAO Doc 9303 parsing and 7-3-1 check digits.
-- `core/standards/verhoeff.py`, `core/standards/date_rules.py`.
-- `extraction/`: preprocessing, MRZ location, OCR adapters.
+- `core/standards/mrz/`: ICAO Doc 9303 TD3 parsing and 7-3-1 check digits,
+  plus a renderer so parsing is round-trip tested.
+- `core/standards/verhoeff.py`, `core/standards/date_rules.py`,
+  `core/standards/errors.py`.
+- `core/contracts/subject.py`: what a detector is handed.
 
-**Exit criteria.** Property-based tests via hypothesis for the check digits and
-Verhoeff. Both are pure arithmetic over strings and must be correct for every
-input, not for the examples that came to mind. The phase-1 vectors in
-`tests/golden/vectors/` were derived from the standards independently of any
-implementation, so they are a real check on this phase rather than a
-restatement of it.
+**Exit criterion met.** Property-based tests via hypothesis for the check
+digits and Verhoeff. Both of Verhoeff's defining guarantees are asserted over
+arbitrary input — every single-digit substitution and every adjacent
+transposition is detected — and the 7-3-1 scheme's blind spot is pinned rather
+than glossed over: it misses adjacent transpositions of characters differing by
+five. The phase-1 vectors were derived from the standards independently of any
+implementation, so agreeing with them is a real check on this phase rather than
+a restatement of it.
+
+**`extraction/` moved to phase 6.** It was listed here originally, and it does
+not belong here. Preprocessing, MRZ location, QR decoding and OCR are pixel
+code, and phase 1 committed data-level fixtures only, so building them now
+would mean shipping pixel code that nothing tests. They move to phase 6,
+alongside the synthetic images that can exercise them. See
+[ADR 0004](adr/0004-extraction-contract-in-core.md).
+
+**What that costs, and what it does not.** Phases 4 and 5 are unaffected: a
+detector consumes a `Subject`, and a `Subject` can be built from the committed
+data-level fixtures — MRZ text now, signed payload bytes in phase 4 — exactly
+as the golden harness already does. What waits until phase 6 is the end-to-end
+path from a photograph to a verdict. Nothing downstream is blocked; the
+integration is simply not demonstrable until there are images.
 
 ---
 
@@ -91,10 +110,15 @@ preference.
 The only rung that can clear a document, so it is built before the rungs that
 cannot.
 
-- `extraction/qr_decode.py`, then `detectors/rung0_crypto/aadhaar_secure_qr.py`.
-- `digilocker_xml_sig.py`, `pdf_pkcs7.py`.
+- `detectors/rung0_crypto/aadhaar_secure_qr.py`, `digilocker_xml_sig.py`,
+  `pdf_pkcs7.py`.
 - `epassport_sod.py` stays a stub. It is blocked on chip reader hardware and the
   console must say so on every case rather than quietly omitting it.
+
+These detectors verify signatures over payload bytes. Getting those bytes out
+of a photograph is `extraction/qr_decode.py`, which is phase 6 — so the golden
+fixtures here are committed payloads, in the same data-level form phase 1
+established.
 
 **Exit criteria.** Golden tests with committed fixtures for every detector.
 A tampered payload produces `PROOF_INVALID`, not an exception.
@@ -111,12 +135,18 @@ digit.
 
 ---
 
-## Phase 6 — Synthetic data, evaluation, and classical tamper detection
+## Phase 6 — Synthetic data, extraction, evaluation, and classical tamper detection
 
-The measuring instrument is built before the thing being measured.
+The measuring instrument is built before the thing being measured. This is also
+where the first images in the project appear, which is why extraction lands
+here rather than in phase 2.
 
 - `datagen/`: synthetic specimens and one class per forgery type, reproducible
-  from a seed.
+  from a seed. **Built first**, because everything else in this phase needs
+  images to be testable.
+- `extraction/`: preprocessing, MRZ location, QR decoding, OCR adapters. Moved
+  from phase 2; see ADR 0004. This is also where `core/contracts/subject.py` is
+  expected to grow, since it was designed without real captures.
 - `eval/protocol.py`, `eval/run_eval.py`, `eval/metrics.py`.
 - `detectors/rung2_inference/tamper_classical.py`, `tamper_trufor.py`,
   `metadata_forensics.py`, `pdf_structure.py`.
@@ -124,7 +154,8 @@ The measuring instrument is built before the thing being measured.
 **Exit criteria.** `eval/run_eval.py` has run on a named dataset and written a
 report to `eval/reports/`. Until then, rule 2 of CLAUDE.md means no performance
 figure appears anywhere in this repository — not in the README, not in a
-docstring, not on a slide.
+docstring, not on a slide. Separately, a photograph of a document now produces a
+verdict end to end, which nothing before this phase could demonstrate.
 
 ---
 
