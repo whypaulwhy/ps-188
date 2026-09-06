@@ -1,0 +1,17 @@
+# Golden case: td3-expiry-unreadable
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. Judged against the fixture capture time, 1 January 2026.
+
+[case]
+id = "td3-expiry-unreadable"
+description = "A partially captured strip. The expiry date was not read, so it was not judged."
+detector = "rung1.expiry"
+declared_type = "INDIAN_PASSPORT"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Derived from td3-expiry-expired by truncating the second line, simulating a strip that OCR could not read in full."
+sha256 = "058dfea214909f88718683bc5a46a92f26e9818b2e09268b200380850c58137c"

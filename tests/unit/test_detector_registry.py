@@ -169,7 +169,7 @@ def test_only_implemented_detectors_register() -> None:
     clear_registry()
     for module in (
         "detectors.rung0_crypto.aadhaar_secure_qr",
-        "detectors.rung1_deterministic.mrz_checkdigits",
+        "detectors.rung1_deterministic.template_geometry",
         "detectors.rung2_inference.tamper_classical",
         "detectors.rung3_context.watchlist",
     ):
@@ -179,11 +179,13 @@ def test_only_implemented_detectors_register() -> None:
 
 
 def test_the_implemented_detectors_are_registered() -> None:
-    """The Rung 0 pair, and nothing that is still a stub."""
+    """Every detector written so far, ordered most authoritative rung first."""
     clear_registry()
     for module in (
         "detectors.rung0_crypto.digilocker_xml_sig",
         "detectors.rung0_crypto.pdf_pkcs7",
+        "detectors.rung1_deterministic.expiry",
+        "detectors.rung1_deterministic.mrz_checkdigits",
     ):
         # Drop it first, so the module body runs exactly once and registers once
         # however many earlier tests already imported it.
@@ -193,5 +195,12 @@ def test_the_implemented_detectors_are_registered() -> None:
     assert [detector.id for detector in registered()] == [
         "rung0.digilocker_xml_sig",
         "rung0.pdf_pkcs7",
+        "rung1.expiry",
+        "rung1.mrz_checkdigits",
     ]
-    assert all(detector.rung is Rung.CRYPTOGRAPHIC for detector in registered())
+    assert [detector.rung for detector in registered()] == [
+        Rung.CRYPTOGRAPHIC,
+        Rung.CRYPTOGRAPHIC,
+        Rung.DETERMINISTIC,
+        Rung.DETERMINISTIC,
+    ]

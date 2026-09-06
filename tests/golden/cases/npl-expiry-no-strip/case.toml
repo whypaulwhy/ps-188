@@ -1,0 +1,17 @@
+# Golden case: npl-expiry-no-strip
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. Judged against the fixture capture time, 1 January 2026.
+
+[case]
+id = "npl-expiry-no-strip"
+description = "A Nepali citizenship certificate, which carries no machine-readable expiry date."
+detector = "rung1.expiry"
+declared_type = "NEPALI_CITIZENSHIP_CERTIFICATE"
+phase = 5
+input = "input.fields.json"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "The same synthetic printed-field transcription as npl-citizenship-printed-only, committed separately so this case stands on its own."
+sha256 = "fa01286e2710519993712585b81a4b2edb990635978934ffc80e5cfc967d2e7c"

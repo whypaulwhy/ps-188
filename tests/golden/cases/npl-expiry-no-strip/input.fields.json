@@ -1,0 +1,19 @@
+{
+  "_note": "SPECIMEN. Synthetic printed-field transcription. Not a real certificate.",
+  "document_type": "npl_citizenship_certificate",
+  "certificate_number": "00-00-00-00000",
+  "full_name": "SPECIMEN TEST CASE",
+  "fathers_name": "SPECIMEN PARENT CASE",
+  "date_of_birth": "2047-01-01 BS",
+  "sex": "M",
+  "citizenship_type": "by descent",
+  "permanent_address": {
+    "district": "SPECIMEN",
+    "municipality": "SPECIMEN",
+    "ward": "0"
+  },
+  "issuing_office": "District Administration Office, SPECIMEN",
+  "issue_date": "2065-01-01 BS",
+  "machine_readable_zone": null,
+  "digital_signature": null
+}

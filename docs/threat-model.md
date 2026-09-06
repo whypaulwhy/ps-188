@@ -137,14 +137,14 @@ are in the corpus.
 | Genuine passport, correct strip | 1 → `PASS` | `td3-icao-specimen`, `td3-ind-specimen` ✅ |
 | Wholly fabricated passport with correct arithmetic | 1 cannot answer; 2 escalates | none yet, phase 6 |
 | Document with nothing to verify | 1 → `NOT_APPLICABLE` | `npl-citizenship-printed-only`, `btn-cid-printed-only` ✅ |
-| Expired but genuine and correctly signed | 1 | none yet, phase 5 |
+| Expired but genuine and correctly signed | 1 | `td3-expiry-expired` ✅ |
 | Cloned template with invented data | 1 and 2 | none yet, phase 6 |
 | Print-and-rephotograph of a real document | 2 | none yet, phase 6 |
 | Screen replay against the live capture | 2 | none yet, phase 7 |
 | Genuine document, wrong bearer | 2 | none yet, phase 7 |
 | Unrecognised document type | — | none; no detector applies, `MANUAL_REVIEW` by default |
 
-Nine attacks have committed fixtures. The rest are named here so the gap is
+Ten attacks have committed fixtures. The rest are named here so the gap is
 visible rather than discovered later. The three Aadhaar rows are the most
 consequential gap in the table: Aadhaar is one of only two document types that
 can reach `CLEARED`, and none of its attacks can be tested yet.

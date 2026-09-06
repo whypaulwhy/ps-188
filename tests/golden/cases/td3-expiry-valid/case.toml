@@ -1,0 +1,17 @@
+# Golden case: td3-expiry-valid
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. Judged against the fixture capture time, 1 January 2026.
+
+[case]
+id = "td3-expiry-valid"
+description = "A passport that is still valid on the day it is presented."
+detector = "rung1.expiry"
+declared_type = "INDIAN_PASSPORT"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Hand-authored 2026-09-06 from the ICAO Doc 9303 Part 3 TD3 layout, with check digits computed by a standalone implementation of the 7-3-1 weighting."
+sha256 = "3c8a4d3723fd13e22bfb4ba285b47a34ea4e002c26adb24305fb52be3af85ee9"

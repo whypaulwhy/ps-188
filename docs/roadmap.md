@@ -172,13 +172,42 @@ golden fixtures.
 
 ---
 
-## Phase 5 — Rung 1, deterministic detectors
+## Phase 5 — Rung 1, deterministic detectors (partial) ✅
 
-- `mrz_checkdigits.py`, `field_crossmatch.py`, `template_geometry.py`.
+- `mrz_checkdigits.py`: **done**. Recomputes every verification number on the
+  strip. The six golden cases committed back in phase 1 now run for real, and
+  the detector reproduces their pinned officer-facing wording exactly — which
+  is what a golden corpus authored before the implementation is for.
+- `expiry.py`: **done**, a module the original file list did not name. CLAUDE.md
+  lists expiry logic under Rung 1 and the threat model had it as an open gap.
+  An expired document is a `FAIL`, which rejects; see below.
+- `field_crossmatch.py`: **moved to phase 6.** Cross-checking the strip against
+  the printed page needs *structured* visual inspection fields, and `Subject`
+  carries the printed page as free text lines. What turns a photograph into
+  named fields is extraction, which is phase 6.
+- `template_geometry.py`: **moved to phase 6.** Pixel work plus per-issuer
+  template specifications, neither of which exists. Same reasoning as ADR 0004.
 
-**Exit criteria.** Golden tests. Every `FAIL` cites the clause it applied, and
-every `reasons` entry is readable by someone who has never heard of a check
-digit.
+**Exit criteria met for what shipped.** Golden tests for both detectors, every
+`FAIL` cites `ICAO Doc 9303 Part 3 s.4.2.2`, and a test asserts no reason
+contains the phrase "check digit" — the corpus-wide jargon ban already covered
+it, and the detector tests check it again at the point of production.
+
+**The expiry decision, and what it costs.** An expired document fails, and a
+Rung 1 failure rejects. `docs/threat-model.md` records that the people crossing
+here are largely daily commuters, so a card that expired last month turns the
+same person back every morning until they renew it, without a human forming a
+view first. It was taken deliberately: an expired travel document is not valid
+for travel, the date is not arguable, the officer is shown exactly which date
+failed, and the alternative would let a document that expired twenty years ago
+clear on its signature alone.
+
+**One thing that turned out not to be checkable.** There is no date-of-birth
+plausibility check, because there cannot usefully be one. The century rule in
+`core.standards.date_rules` resolves a two-digit year into the hundred years
+ending on the day of the crossing, so every resolution is already a plausible
+living age by construction and the test would pass unconditionally. Saying so
+is better than shipping a check that always passes and looks like coverage.
 
 ---
 

@@ -1,0 +1,17 @@
+[
+  {
+    "detector_id": "rung1.expiry",
+    "rung": 1,
+    "result": "FAIL",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "This document expired on 01 January 2020 and is no longer valid for travel."
+    ],
+    "standard_ref": "ICAO Doc 9303 Part 3 s.4.2.2, date of expiry",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "9347b3e949d8c707e8b2f7f22162e159a6aecaf7f6c3bb061ca6fcc23e246cbf"
+  }
+]

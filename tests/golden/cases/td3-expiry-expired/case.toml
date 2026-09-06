@@ -1,0 +1,17 @@
+# Golden case: td3-expiry-expired
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. Judged against the fixture capture time, 1 January 2026.
+
+[case]
+id = "td3-expiry-expired"
+description = "A genuine, internally consistent passport that expired before the crossing."
+detector = "rung1.expiry"
+declared_type = "INDIAN_PASSPORT"
+phase = 5
+input = "input.mrz.txt"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real document number."
+provenance = "Derived from td3-expiry-valid by moving the expiry date from 2035 to 2020 and recomputing every check digit, so the strip stays internally consistent and only the date is at fault."
+sha256 = "9347b3e949d8c707e8b2f7f22162e159a6aecaf7f6c3bb061ca6fcc23e246cbf"
