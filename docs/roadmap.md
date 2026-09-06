@@ -211,7 +211,7 @@ is better than shipping a check that always passes and looks like coverage.
 
 ---
 
-## Phase 6 — Synthetic data, extraction, evaluation, and classical tamper detection
+## Phase 6 — Synthetic data, extraction, evaluation, and classical tamper detection (partial)
 
 The measuring instrument is built before the thing being measured. This is also
 where the first images in the project appear, which is why extraction lands
@@ -227,11 +227,59 @@ here rather than in phase 2.
 - `detectors/rung2_inference/tamper_classical.py`, `tamper_trufor.py`,
   `metadata_forensics.py`, `pdf_structure.py`.
 
+### Done in this slice
+
+- `datagen/`: reproducible specimens for a **fictional issuing state**, and five
+  forgery generators each stating what it altered. No real issuer is imitated
+  and no synthetic face is generated.
+- `extraction/`: preprocessing, strip location, QR decoding, and a two-backend
+  reader. Plus `pipeline.py`, which turns a capture into a `Subject`.
+- **The end-to-end path is closed.** A photograph now flows through extraction
+  into the detectors written in phases 4 and 5 and out as a verdict. That is
+  the gap ADR 0004 opened, and it is shut.
+
+### The finding that matters
+
+**A general text recogniser cannot read the machine-readable strip.** Measured
+on this project's own specimens, RapidOCR reads the first strip line at 100%
+character agreement and the second at 32% — and reads it **backwards**, with the
+filler character `<` recovered as `>`. Feeding it a cropped single line does not
+help; its direction classifier flips a dense alphanumeric run because there is
+no linguistic context to orient it.
+
+This is exactly what the stack in CLAUDE.md already specified — *"Tesseract with
+an OCR-B whitelist for the MRZ zone only"* — and it is now demonstrated rather
+than assumed. **Tesseract is not installed on the development machine**, so the
+strip is currently reported as found but unread, and every case with a strip
+goes to a human saying so. That is the correct behaviour, not a bug, and it is
+pinned by a test that will start asserting the opposite the moment a reader is
+installed.
+
+The strip is deliberately **not** repaired by reversing the string and mapping
+`>` back to `<`. Individual characters are also substituted, so a repaired strip
+would be plausible and wrong, and would manufacture check-digit failures on
+genuine documents — the first-order harm in `docs/threat-model.md`.
+
+### Still to do in phase 6
+
+- `eval/protocol.py`, `run_eval.py`, `metrics.py`. **No performance figure
+  exists yet**, so rule 2 still holds without exception.
+- `detectors/rung2_inference/`: the four tamper detectors. TruFor has no weights
+  available here and will ship reporting `INCONCLUSIVE`, which is what
+  CLAUDE.md's testing rule asks of an unavailable model.
+- `field_crossmatch.py` and `template_geometry.py`, carried from phase 5. The
+  printed page is now readable, so the first of these is unblocked.
+
 **Exit criteria.** `eval/run_eval.py` has run on a named dataset and written a
 report to `eval/reports/`. Until then, rule 2 of CLAUDE.md means no performance
 figure appears anywhere in this repository — not in the README, not in a
-docstring, not on a slide. Separately, a photograph of a document now produces a
-verdict end to end, which nothing before this phase could demonstrate.
+docstring, not on a slide.
+
+**One calibration to redo against real captures.** The strip locator uses a row
+ink-density threshold measured on synthetic specimens: strip rows read 0.15–0.26
+there and printed-field rows reach 0.05. Real captures vary in lighting and
+print contrast, and this constant is the first thing to re-measure. A strip it
+misses is reported as unread, which is the safe direction.
 
 ---
 

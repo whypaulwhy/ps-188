@@ -1,11 +1,11 @@
 """Turning a captured file into the regions and text that detectors consume.
 
-Empty until phase 6. This is pixel code, and phase 1 committed data-level
-fixtures only, so there is nothing here that could be tested yet. It lands
-alongside the synthetic images in ``datagen/``. See
-``docs/adr/0004-extraction-contract-in-core.md``.
+The seam ADR 0004 describes: everything uncertain about a photograph happens
+here, and detectors receive a settled set of facts. Nothing here decides
+anything, nothing invents a value, and every failure is recorded in
+``Subject.not_extracted`` rather than hidden.
 
-What a detector receives is not defined here: it is
-:class:`core.contracts.subject.Subject`, which lives in ``core`` so that no
-detector imports a vision library transitively.
+What a detector receives is defined in :class:`core.contracts.subject.Subject`,
+which lives in ``core`` so that no detector imports a vision library
+transitively.
 """

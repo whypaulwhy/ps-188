@@ -10,8 +10,14 @@ license = { text = "Proprietary" }
 # cannot be imported without it. Nothing else is a runtime dependency yet.
 dependencies = [
     "cryptography>=50.0.1",
+    "numpy>=2.5.2",
+    "opencv-python-headless>=5.0.0.93",
+    "pillow>=12.3.0",
     "pydantic>=2.9,<3",
     "pyhanko>=0.37.0",
+    "pyzbar>=0.1.9",
+    "rapidocr-onnxruntime>=1.4.4",
+    "scikit-image>=0.26.0",
     "signxml>=5.1.0",
 ]
 
@@ -81,6 +87,10 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 # Tests assert; that is the point.
 "tests/**" = ["S101"]
+# Specimen generation is seeded for reproducibility, not for secrecy. A
+# cryptographic generator here would defeat the purpose: a fixture has to be
+# regenerable byte for byte from its seed.
+"datagen/**" = ["S311"]
 
 # ----------------------------------------------------------------------------
 # mypy. `make types` runs this in strict mode over core/ only, per CLAUDE.md.

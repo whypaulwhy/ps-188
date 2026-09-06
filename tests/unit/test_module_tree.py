@@ -60,6 +60,18 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "detectors.rung0_crypto.verification",
         "detectors.rung1_deterministic.expiry",
         "detectors.rung1_deterministic.mrz_checkdigits",
+        "datagen.forgeries.base",
+        "datagen.forgeries.copy_move",
+        "datagen.forgeries.photo_substitution",
+        "datagen.forgeries.recapture",
+        "datagen.forgeries.template_clone",
+        "datagen.forgeries.text_field_edit",
+        "datagen.synthetic_docs",
+        "extraction.mrz_locate",
+        "extraction.ocr_adapter",
+        "extraction.pipeline",
+        "extraction.preprocess",
+        "extraction.qr_decode",
     }
 )
 """The modules phase 0 implements for real. Everything else must still be a stub."""
