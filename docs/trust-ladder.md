@@ -12,7 +12,7 @@ against are [`core/trust/policy.py`](../core/trust/policy.py).
 | 0 | Cryptographic | An issuer signature verified against a trusted key | `PROOF_VALID`, `PROOF_INVALID`, `NO_PROOF_PRESENT` | Yes | Yes |
 | 1 | Deterministic | Arithmetic or logic fixed by a published standard | `PASS`, `FAIL`, `NOT_APPLICABLE` | No | Yes |
 | 2 | Inference | A learned model's score plus an uncertainty | `NO_FINDING`, `SUSPICIOUS`, `INCONCLUSIVE` | No | No |
-| 3 | Contextual | History, watchlists, velocity | `FLAG_RAISED`, `NO_FLAG` | No | No |
+| 3 | Contextual | History, watchlists, velocity | `FLAG_RAISED`, `NO_FLAG`, `NOT_CHECKED` | No | No |
 
 The rung number counts down from the top of the ladder, so a **smaller number
 means more authority**. `Rung.CRYPTOGRAPHIC < Rung.INFERENCE` is true and reads
@@ -89,8 +89,12 @@ evidence sets with hypothesis, not as a handful of examples.
 
 ## What was not checked
 
-Three results establish nothing at all: `NO_PROOF_PRESENT`, `NOT_APPLICABLE`
-and `INCONCLUSIVE`. Each becomes a line in `Verdict.not_checked` rather than a
-finding, and the console has to display them. A document with no signature to
+Four results establish nothing at all: `NO_PROOF_PRESENT`, `NOT_APPLICABLE`,
+`INCONCLUSIVE` and `NOT_CHECKED`. Each becomes a line in `Verdict.not_checked`
+rather than a finding, and the console has to display them.
+
+The last of those was added in phase 8. Without it, a checkpoint holding no
+watchlist would have had to report `NO_FLAG`, which reads as "checked, nothing
+found" — silence about a check that never happened. A document with no signature to
 verify and a tamper model that failed to load is not a clean document; it is an
 unexamined one, and the officer is told exactly that.

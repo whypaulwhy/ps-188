@@ -390,13 +390,50 @@ differently from one where they were.
 
 ---
 
-## Phase 8 — Rung 3, contextual advisories
+## Phase 8 — Rung 3, contextual advisories ✅
 
+- `context_store.py`: a crossing history and a watchlist, both built by the
+  caller and handed in. Rule 5 requires it, and it also means a detector cannot
+  widen its own view of a traveller.
 - `repeat_identity.py`, `watchlist.py`.
 
-**Exit criteria.** A test proving that no Rung 3 output can change a decision.
-The ladder already guarantees this; the phase adds the detectors that would
-break it if it did not.
+**Exit criterion met.** Both advisories, raised as loudly as they can be, are
+run through the real ladder against every decision the system can reach —
+including a clearance and a rejection — and nothing moves.
+
+### Two boundaries, chosen rather than inherited
+
+**Repeat identity links documents, not people.** A crossing is matched on the
+salted digest of the document number, so the same person presenting a second
+document is a second history. Linking across documents would need biometrics,
+which turns a document log into a movement history of a border population. That
+is a different system and would need its own review; `docs/threat-model.md`
+names it.
+
+**The watchlist matches on exact digest only.** No name matching. Name matching
+catches aliases, and it also flags an innocent person who shares a name with
+someone listed — on a border where the same people cross every morning, that
+advisory would appear in front of an officer daily, indefinitely, with no way to
+clear it. Exact matching misses more, and what it reports is true.
+
+Neither structure holds a document number. An operator's watchlist arrives as
+numbers and is hashed on load; `Crossing` refuses to construct on anything that
+is not a full digest.
+
+### A contract change this phase forced
+
+Rung 3's vocabulary was `FLAG_RAISED` and `NO_FLAG`. Building the detectors
+showed that was not enough: a checkpoint holding no watchlist, or a document
+whose number could not be read, would have had to report `NO_FLAG` — which an
+officer reads as "checked, nothing found". That is silence about a check that
+did not happen, which CLAUDE.md calls a defect.
+
+So Rung 3 gained `NOT_CHECKED`, mapped into the ladder's `SILENT` set so it
+lands in `Verdict.not_checked` alongside `NO_PROOF_PRESENT` and `INCONCLUSIVE`.
+It weakens no guarantee: a silent result clears nothing and rejects nothing by
+construction. The phase-0 exhaustive test found the change immediately and
+demanded a declared expectation for the new value, which is the test design
+working as intended.
 
 ---
 

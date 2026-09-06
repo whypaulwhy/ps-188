@@ -162,6 +162,9 @@ can reach `CLEARED`, and none of its attacks can be tested yet.
 | A detector reaching into the database to change what it reports | Architecture boundary, enforced by import-linter in CI. Rule 5. |
 | Tuning a Rung 2 model to clear a specific document | Structurally impossible. Rung 2 has no vocabulary for a clearing result, and `Verdict` refuses a clearance without Rung 0 or Rung 1 support. |
 | Editing a golden fixture to make a detector look correct | Each fixture's digest is committed in its `case.toml` and checked on every run. |
+| Using the crossing history to track a person across documents | It cannot: a history is keyed on the digest of one document number, so a second document is a second history. Linking them needs biometrics, which is a different system and would need its own review. |
+| Reading document numbers out of a stolen watchlist or history | Neither holds one. An operator's list is hashed on load, and `Crossing` refuses to construct on anything that is not a full digest. |
+| A watchlist advisory following an innocent person | Matching is exact-digest only. Name matching would flag anyone sharing a name with a listed person, at every crossing, with no way to clear it. |
 | Quietly softening officer-facing wording | `reasons` text is pinned in the goldens and compared exactly. |
 | Overclaiming in a demo | Rule 2. Numbers come from `eval/run_eval.py` on a named dataset or they do not exist. |
 | A model failing silently and looking like a pass | `INCONCLUSIVE` is a distinct result and lands in `Verdict.not_checked`. |

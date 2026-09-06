@@ -85,7 +85,18 @@ class Result(StrEnum):
     """A contextual signal the officer should know about. Never decides."""
 
     NO_FLAG = "NO_FLAG"
-    """No contextual signal. Never decides."""
+    """The context was checked and there is nothing to report. Never decides."""
+
+    NOT_CHECKED = "NOT_CHECKED"
+    """The context could not be checked at all. Establishes nothing, and says so.
+
+    Added because the alternative was worse. Without it, a watchlist that could
+    not be consulted -- no list loaded, or a document whose number could not be
+    read -- would have to report ``NO_FLAG``, which an officer reads as "checked,
+    nothing found". Silence about a check that did not happen is a defect, not a
+    clean result, so this lands in ``Verdict.not_checked`` alongside
+    ``NO_PROOF_PRESENT`` and ``INCONCLUSIVE``.
+    """
 
 
 class Decision(StrEnum):
@@ -131,7 +142,7 @@ RESULTS_BY_RUNG: Final[Mapping[Rung, frozenset[Result]]] = MappingProxyType(
         ),
         Rung.DETERMINISTIC: frozenset({Result.PASS, Result.FAIL, Result.NOT_APPLICABLE}),
         Rung.INFERENCE: frozenset({Result.NO_FINDING, Result.SUSPICIOUS, Result.INCONCLUSIVE}),
-        Rung.CONTEXTUAL: frozenset({Result.FLAG_RAISED, Result.NO_FLAG}),
+        Rung.CONTEXTUAL: frozenset({Result.FLAG_RAISED, Result.NO_FLAG, Result.NOT_CHECKED}),
     }
 )
 """Which results each rung may report. Enforced by the Evidence contract."""

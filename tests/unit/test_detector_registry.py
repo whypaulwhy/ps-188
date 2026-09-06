@@ -170,7 +170,6 @@ def test_only_implemented_detectors_register() -> None:
     for module in (
         "detectors.rung0_crypto.aadhaar_secure_qr",
         "detectors.rung1_deterministic.template_geometry",
-        "detectors.rung3_context.watchlist",
     ):
         importlib.import_module(module)
 
@@ -192,6 +191,8 @@ def test_the_implemented_detectors_are_registered() -> None:
         "detectors.rung2_inference.pdf_structure",
         "detectors.rung2_inference.tamper_classical",
         "detectors.rung2_inference.tamper_trufor",
+        "detectors.rung3_context.repeat_identity",
+        "detectors.rung3_context.watchlist",
     ):
         # Drop it first, so the module body runs exactly once and registers once
         # however many earlier tests already imported it.
@@ -210,6 +211,8 @@ def test_the_implemented_detectors_are_registered() -> None:
         "rung2.pdf_structure",
         "rung2.tamper_classical",
         "rung2.tamper_trufor",
+        "rung3.repeat_identity",
+        "rung3.watchlist",
     ]
     assert [detector.rung for detector in registered()] == [
         Rung.CRYPTOGRAPHIC,
@@ -223,4 +226,6 @@ def test_the_implemented_detectors_are_registered() -> None:
         Rung.INFERENCE,
         Rung.INFERENCE,
         Rung.INFERENCE,
+        Rung.CONTEXTUAL,
+        Rung.CONTEXTUAL,
     ]

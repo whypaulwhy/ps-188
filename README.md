@@ -84,7 +84,7 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 5 | Rung 1, deterministic detectors | ◐ partial |
 | 6 | Synthetic data, extraction, evaluation, tamper detection | ✅ |
 | 7 | Rung 2, biometrics | ◐ partial |
-| 8 | Rung 3, contextual advisories | ☐ |
+| 8 | Rung 3, contextual advisories | ✅ |
 | 9 | API, database, ledger, officer console | ☐ |
 
 **Working today:** the trust ladder and evidence contract; ICAO 9303 TD3 parsing
@@ -92,8 +92,10 @@ and check-digit arithmetic; Verhoeff; two-digit-year century recovery; salted
 identifier hashing, masking and retention; DigiLocker XML signature and signed
 PDF verification; MRZ check-digit, expiry and strip-versus-page detectors;
 synthetic specimen and forgery generation; extraction, so a photograph produces
-a verdict end to end; four Rung 2 tamper detectors; and an evaluation harness
-that has run and produced a committed report.
+a verdict end to end; four Rung 2 tamper detectors; Rung 3 repeat-crossing and
+watchlist advisories that provably cannot change a decision; encrypted-at-rest
+face embeddings with a retention window enforced in code; and an evaluation
+harness that has run and produced a committed report.
 
 **Known gaps, deliberately:**
 

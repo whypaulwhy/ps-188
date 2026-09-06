@@ -57,6 +57,7 @@ EXPECTED_ALONE: dict[tuple[Rung, Result], Decision] = {
     (Rung.INFERENCE, Result.INCONCLUSIVE): Decision.MANUAL_REVIEW,
     (Rung.CONTEXTUAL, Result.FLAG_RAISED): Decision.MANUAL_REVIEW,
     (Rung.CONTEXTUAL, Result.NO_FLAG): Decision.MANUAL_REVIEW,
+    (Rung.CONTEXTUAL, Result.NOT_CHECKED): Decision.MANUAL_REVIEW,
 }
 """What each result decides on its own. Only cryptographic proof clears."""
 
@@ -375,6 +376,21 @@ def test_rejection_always_rests_on_an_authoritative_failure(
 # ---------------------------------------------------------------------------
 # What the verdict carries
 # ---------------------------------------------------------------------------
+
+
+def test_a_context_check_that_did_not_happen_is_reported() -> None:
+    """Rung 3 has to be able to say it could not look, or silence reads as a clean result."""
+    verdict = decide(
+        evidence(
+            Rung.CONTEXTUAL,
+            Result.NOT_CHECKED,
+            reasons=("This checkpoint holds no watchlist, so none was consulted.",),
+        )
+    )
+
+    assert verdict.decision is Decision.MANUAL_REVIEW
+    assert verdict.advisories == ()
+    assert verdict.not_checked == ("This checkpoint holds no watchlist, so none was consulted.",)
 
 
 def test_not_checked_reports_everything_that_established_nothing() -> None:

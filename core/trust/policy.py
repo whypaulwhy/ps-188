@@ -53,6 +53,7 @@ SILENT: Final[frozenset[tuple[Rung, Result]]] = frozenset(
         (Rung.CRYPTOGRAPHIC, Result.NO_PROOF_PRESENT),
         (Rung.DETERMINISTIC, Result.NOT_APPLICABLE),
         (Rung.INFERENCE, Result.INCONCLUSIVE),
+        (Rung.CONTEXTUAL, Result.NOT_CHECKED),
     }
 )
 """Evidence that establishes nothing. Each one becomes a line in ``Verdict.not_checked``."""
