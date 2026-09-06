@@ -79,7 +79,7 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 3 | Privacy: hashing, masking, retention | ✅ |
 | 4 | Rung 0, cryptographic verification | ◐ partial |
 | 5 | Rung 1, deterministic detectors | ◐ partial |
-| 6 | Synthetic data, extraction, evaluation, tamper detection | ☐ |
+| 6 | Synthetic data, extraction, evaluation, tamper detection | ◐ partial |
 | 7 | Rung 2, biometrics | ☐ |
 | 8 | Rung 3, contextual advisories | ☐ |
 | 9 | API, database, ledger, officer console | ☐ |
@@ -87,7 +87,9 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 **Working today:** the trust ladder and evidence contract; ICAO 9303 TD3 parsing
 and check-digit arithmetic; Verhoeff; two-digit-year century recovery; salted
 identifier hashing, masking and retention; DigiLocker XML signature and signed
-PDF verification; MRZ check-digit and expiry detectors.
+PDF verification; MRZ check-digit and expiry detectors; synthetic specimen and
+forgery generation; and extraction — a photograph now produces a verdict end to
+end.
 
 **Known gaps, deliberately:**
 
@@ -97,9 +99,12 @@ PDF verification; MRZ check-digit and expiry detectors.
   document fails silently in the worst direction. One of only two document types
   that can reach `CLEARED` therefore does not work yet. This is the single
   highest-value thing to unblock.
-- **No image handling yet.** Preprocessing, MRZ location and OCR arrive in phase
-  6 with the synthetic images that can test them. Until then no photograph
-  produces a verdict end to end.
+- **The machine-readable strip does not read reliably.** Tesseract is installed
+  and wired in, and reads the first strip line at 98% character agreement. It
+  needs OCR-B training data, which the stock install does not ship, before the
+  second line reads dependably. Until then the reader refuses to vouch for a
+  strip it cannot read cleanly, and the case goes to a human saying so — rather
+  than guessing and failing a genuine document.
 - **No chip reading.** Blocked on hardware, and every case says so rather than
   omitting the check.
 
