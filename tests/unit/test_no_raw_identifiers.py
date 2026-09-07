@@ -46,6 +46,9 @@ SKIPPED_DIRECTORIES: Final[frozenset[str]] = frozenset(
         ".ruff_cache",
         ".hypothesis",
         "htmlcov",
+        # Not committed content, and it carries .json files. Scanning it made
+        # the test count depend on whether a tool had run on that machine.
+        ".import_linter_cache",
     }
 )
 

@@ -194,6 +194,13 @@ docs/          scope, threat model, trust ladder, ADRs
 `core/` and `detectors/` may not import `api/`, `db/` or `ui/`. This is checked
 by import-linter in CI, not left to review.
 
+## Picking the work up
+
+[`docs/handoff.md`](docs/handoff.md) is the state of play: what exists, what is
+deliberately absent and why, what is blocked on a specimen or a decision rather
+than on code, and the tooling traps on a Windows machine. Read it after
+[`CLAUDE.md`](CLAUDE.md) and before [`docs/roadmap.md`](docs/roadmap.md).
+
 ## Documentation
 
 | | |
