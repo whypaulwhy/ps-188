@@ -56,6 +56,7 @@ honestly, failures included.
 **Phases 0 through 9 are complete or explicitly partial.** Last commits:
 
 ```
+340004a Add a handoff document, and stop the repo scan reading a tool cache
 7c67f6c Phase 9 slice B: the shell, and the things it refuses to do
 22698f1 Phase 9 slice A: the audit trail, and the report that says what was missed
 f236c3b Fix tests that assumed an optional backend was always installed
@@ -326,5 +327,5 @@ the next best, and is small.
 
 ---
 
-*Last updated at commit `7c67f6c`. If the log above does not match `git log`,
+*Last updated at commit `340004a`. If the log above does not match `git log`,
 this file is stale — trust the repository, then fix this file.*
