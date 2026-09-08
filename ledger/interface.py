@@ -40,6 +40,7 @@ from pydantic import BaseModel
 from core.contracts import DestructionRecord, OfficerReview, Verdict
 from ledger.hashchain import (
     Checkpoint,
+    consistency_proof,
     inclusion_proof,
     leaf_hash,
     merkle_root,
@@ -272,6 +273,26 @@ class TransparencyLog:
     def proof(self, index: int) -> tuple[bytes, ...]:
         """Return an inclusion proof for one entry."""
         return inclusion_proof(self._leaves, index)
+
+    def consistency(self, old_size: int) -> tuple[bytes, ...]:
+        """Return a proof that this log extends a shorter one, unchanged.
+
+        An inclusion proof says an entry is present. It says nothing about
+        whether the log used to say something else: whoever holds the database
+        can recompute an entirely different history in which every inclusion
+        proof still verifies. This is what closes that gap, and it is only worth
+        anything against a checkpoint somebody else already holds.
+
+        Args:
+            old_size: The entry count of an earlier published checkpoint.
+
+        Returns:
+            The proof nodes.
+
+        Raises:
+            LedgerError: If `old_size` is negative or exceeds this log.
+        """
+        return consistency_proof(self._leaves, old_size)
 
     def leaf(self, index: int) -> bytes:
         """Return the leaf hash at an index."""

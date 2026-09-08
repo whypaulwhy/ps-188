@@ -52,6 +52,7 @@ def checkpoint_document(
     signed_at: datetime.datetime,
     signature: str,
     public_key: str,
+    consistency: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Return the published form of a checkpoint.
 
@@ -62,12 +63,14 @@ def checkpoint_document(
         signed_at: When it was signed.
         signature: The Ed25519 signature, hex encoded.
         public_key: The raw Ed25519 public key, hex encoded.
+        consistency: A proof that this checkpoint extends an earlier published
+            one, when one was supplied to prove it against.
 
     Returns:
         A JSON-ready document. Every field a verifier needs is present, so the
         recipient depends on nothing held by the operator.
     """
-    return {
+    document: dict[str, object] = {
         "format": FORMAT,
         "checkpoint_id": checkpoint_id,
         "tree_size": tree_size,
@@ -76,6 +79,9 @@ def checkpoint_document(
         "signature": signature,
         "public_key": public_key,
     }
+    if consistency is not None:
+        document["consistency"] = consistency
+    return document
 
 
 def _filename(checkpoint_id: str, signed_at: datetime.datetime, tree_size: int) -> str:
@@ -103,6 +109,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=".",
         help="Directory to write the checkpoint into. Created if absent.",
     )
+    parser.add_argument(
+        "--since",
+        default=None,
+        help=(
+            "A previously published checkpoint file. The new checkpoint carries "
+            "a proof that it extends that one, so a recipient holding both can "
+            "check the log was appended to without contacting this system."
+        ),
+    )
     arguments = parser.parse_args(argv)
 
     try:
@@ -121,10 +136,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return REFUSED
 
+    earlier: dict[str, object] | None = None
+    if arguments.since is not None:
+        try:
+            earlier = json.loads(pathlib.Path(arguments.since).read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError) as error:
+            print(f"Refused: cannot read {arguments.since}: {error}", file=sys.stderr)
+            return REFUSED
+
     factory = create_session_factory(settings.database_url)
     with factory() as session:
         log = load_log(session)
         signed = log.checkpoint(key=key, signed_at=datetime.datetime.now(tz=datetime.UTC))
+        consistency: dict[str, object] | None = None
+        if earlier is not None:
+            old_size = int(earlier["tree_size"])  # type: ignore[call-overload]
+            if old_size > len(log):
+                print(
+                    f"Refused: {arguments.since} claims {old_size} entries and this "
+                    f"log holds {len(log)}. This log cannot be an extension of it. "
+                    "Either that checkpoint is from a different deployment, or "
+                    "entries have been lost from this one.",
+                    file=sys.stderr,
+                )
+                return REFUSED
+            consistency = {
+                "from_size": old_size,
+                "from_root": str(earlier["root"]),
+                "proof": [node.hex() for node in log.consistency(old_size)],
+            }
 
     public = key.public_key()
     if not verify_checkpoint(signed, key=public):  # pragma: no cover - just signed
@@ -138,6 +178,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         signed_at=signed.signed_at,
         signature=signed.signature.hex(),
         public_key=public.public_bytes_raw().hex(),
+        consistency=consistency,
     )
 
     folder = pathlib.Path(arguments.out)
@@ -149,6 +190,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"  {signed.tree_size} entries, root {signed.root.hex()}")
     if signed.tree_size == 0:
         print("  The log is empty. This still proves that it was empty at this time.")
+    if consistency is not None:
+        print(f"  Carries a proof that it extends the checkpoint of {consistency['from_size']}.")
+    else:
+        print("  No --since given, so this carries no proof that it extends the last one.")
+        print("  Pass the previous checkpoint file to --since and it will.")
     print(
         "\nThis proves nothing while it stays on this machine. Send it to somebody "
         "outside this deployment, and keep every one you send."

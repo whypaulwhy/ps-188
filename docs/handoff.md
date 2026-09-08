@@ -70,7 +70,7 @@ changed since:
 ruff             All checks passed
 mypy --strict    no issues in 26 source files (core/ only, per CLAUDE.md)
 import-linter    5 contracts kept, 0 broken
-pytest           1566 passed
+pytest           1686 passed
 coverage         core/ 100.00% branch  (gate fails below 100)
 ```
 
@@ -332,9 +332,14 @@ finished** except authentication (d), which needs the deployment answer in
 §6.1.6, and `core/trust/aggregation.py` (e), which is a ten-minute decision
 about whether to delete a dead stub.
 
-The next real code work is a **consistency proof** in `ledger/hashchain.py`.
-Phase 13 publishes checkpoints and the verifier can only check that a series
-grew, which it honestly reports as weaker than a proof.
+Consistency proofs landed in phase 14, so the ledger story is complete: a
+recipient holding a series of published checkpoints can prove offline that the
+log was only appended to. **The remaining code work is small**: `core/trust/
+aggregation.py` is a dead stub to delete or justify, and authentication is
+blocked on §6.1.6.
+
+**What is left is §6.3, the competition work** — a demo script and seeded data,
+and the written submission. Both are unstarted.
 
 **The highest-value thing overall is still not code**: a real issuer certificate
 (DigiLocker or UIDAI). Phase 12 built the way to install one; nobody has supplied

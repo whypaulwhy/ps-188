@@ -27,9 +27,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from api import publish_checkpoint
 from core.contracts import Result, Rung
 from core.trust.ladder import resolve
-from db.recording import record_screening
+from db.recording import load_log, record_screening
 from db.session import create_session_factory
-from ledger.hashchain import signed_checkpoint_bytes
+from ledger.hashchain import signed_checkpoint_bytes, verify_consistency
 from tests.support import DECIDED_AT, evidence, provenance
 
 WHEN = datetime.datetime(2026, 9, 8, 12, 0, tzinfo=datetime.UTC)
@@ -318,3 +318,198 @@ def test_a_rewritten_history_is_reported(tmp_path: pathlib.Path) -> None:
     paths = series(tmp_path / "series", [4, 4], key, roots=[bytes([0xAA]) * 32, bytes([0xBB]) * 32])
 
     assert verifier().main([str(path) for path in paths]) == 1
+
+
+# Consistency between published checkpoints
+
+
+def add_case(url: str, case_id: str) -> None:
+    """Append one more screening to a log, so the next checkpoint is larger."""
+    factory = create_session_factory(url)
+    verdict = resolve(
+        [evidence(Rung.DETERMINISTIC, Result.PASS)],
+        provenance=provenance(),
+        decided_at=DECIDED_AT,
+    )
+    with factory() as session:
+        record_screening(
+            session,
+            case_id=case_id,
+            verdict=verdict,
+            checkpoint_id="raxaul-03",
+            recorded_at=WHEN,
+        )
+
+
+def test_a_checkpoint_can_prove_it_extends_the_previous_one(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+) -> None:
+    """The claim an inclusion proof cannot make: nothing earlier was withdrawn."""
+    first_dir = tmp_path / "first"
+    publish(monkeypatch, tmp_path, database=database, signing_key=signing_key, out=str(first_dir))
+    first = sorted(first_dir.glob("*.json"))[0]
+
+    add_case(database, "case-3")
+    second_dir = tmp_path / "second"
+    monkeypatch.setenv("SENTINELID_DB_URL", database)
+    monkeypatch.setenv("SENTINELID_CHECKPOINT_ID", "raxaul-03")
+    monkeypatch.setenv("SENTINELID_LEDGER_KEY_FILE", str(signing_key))
+    assert publish_checkpoint.main(["--out", str(second_dir), "--since", str(first)]) == 0
+
+    second = sorted(second_dir.glob("*.json"))[0]
+    document = json.loads(second.read_text(encoding="utf-8"))
+    assert document["consistency"]["from_size"] == 2
+    assert document["tree_size"] == 3
+
+    assert verifier().main([str(first), str(second)]) == 0
+
+
+def test_the_verifier_reports_a_proved_link(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A recipient must be able to see which links were proved and which were not."""
+    first_dir = tmp_path / "first"
+    publish(monkeypatch, tmp_path, database=database, signing_key=signing_key, out=str(first_dir))
+    first = sorted(first_dir.glob("*.json"))[0]
+
+    add_case(database, "case-3")
+    second_dir = tmp_path / "second"
+    publish_checkpoint.main(["--out", str(second_dir), "--since", str(first)])
+    second = sorted(second_dir.glob("*.json"))[0]
+
+    capsys.readouterr()
+    verifier().main([str(first), str(second)])
+
+    assert "PROVED to extend the previous checkpoint" in capsys.readouterr().out
+
+
+def test_a_checkpoint_without_since_says_it_carries_no_proof(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Silence about a missing proof would read as a proof that passed."""
+    first_dir = tmp_path / "first"
+    publish(monkeypatch, tmp_path, database=database, signing_key=signing_key, out=str(first_dir))
+    add_case(database, "case-3")
+    second_dir = tmp_path / "second"
+    publish_checkpoint.main(["--out", str(second_dir)])
+
+    capsys.readouterr()
+    verifier().main(
+        [
+            str(sorted(first_dir.glob("*.json"))[0]),
+            str(sorted(second_dir.glob("*.json"))[0]),
+        ]
+    )
+
+    assert "carries no proof" in capsys.readouterr().out
+
+
+def test_a_forged_consistency_proof_is_caught(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+) -> None:
+    """The whole point. A proof that does not hold must not pass as one."""
+    first_dir = tmp_path / "first"
+    publish(monkeypatch, tmp_path, database=database, signing_key=signing_key, out=str(first_dir))
+    first = sorted(first_dir.glob("*.json"))[0]
+
+    add_case(database, "case-3")
+    second_dir = tmp_path / "second"
+    publish_checkpoint.main(["--out", str(second_dir), "--since", str(first)])
+    second = sorted(second_dir.glob("*.json"))[0]
+
+    document = json.loads(second.read_text(encoding="utf-8"))
+    document["consistency"]["proof"] = ["00" * 32]
+    second.write_text(json.dumps(document), encoding="utf-8")
+
+    assert verifier().main([str(first), str(second)]) == 1
+
+
+def test_a_proof_about_a_different_earlier_log_is_caught(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+) -> None:
+    """A proof naming an earlier root that is not the one held proves nothing."""
+    first_dir = tmp_path / "first"
+    publish(monkeypatch, tmp_path, database=database, signing_key=signing_key, out=str(first_dir))
+    first = sorted(first_dir.glob("*.json"))[0]
+
+    add_case(database, "case-3")
+    second_dir = tmp_path / "second"
+    publish_checkpoint.main(["--out", str(second_dir), "--since", str(first)])
+    second = sorted(second_dir.glob("*.json"))[0]
+
+    document = json.loads(second.read_text(encoding="utf-8"))
+    document["consistency"]["from_root"] = "11" * 32
+    second.write_text(json.dumps(document), encoding="utf-8")
+
+    assert verifier().main([str(first), str(second)]) == 1
+
+
+def test_publishing_against_a_larger_earlier_checkpoint_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A log smaller than one it claims to extend has lost entries. Say so, loudly."""
+    invented = tmp_path / "invented.json"
+    invented.write_text(
+        json.dumps(
+            publish_checkpoint.checkpoint_document(
+                checkpoint_id="raxaul-03",
+                tree_size=99,
+                root="00" * 32,
+                signed_at=WHEN,
+                signature="00" * 64,
+                public_key="00" * 32,
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("SENTINELID_DB_URL", database)
+    monkeypatch.setenv("SENTINELID_CHECKPOINT_ID", "raxaul-03")
+    monkeypatch.setenv("SENTINELID_LEDGER_KEY_FILE", str(signing_key))
+    code = publish_checkpoint.main(["--out", str(tmp_path / "out"), "--since", str(invented)])
+
+    assert code == publish_checkpoint.REFUSED
+    assert "cannot be an extension" in capsys.readouterr().err
+
+
+def test_the_consistency_endpoint_matches_the_published_proof(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    database: str,
+    signing_key: pathlib.Path,
+) -> None:
+    """The online path and the offline path must not disagree about the same log."""
+    factory = create_session_factory(database)
+    with factory() as session:
+        log = load_log(session)
+        proof = log.consistency(1)
+        root = log.root()
+
+    assert verify_consistency(
+        old_size=1,
+        new_size=len(log),
+        old_root=log.leaf(0),
+        new_root=root,
+        proof=proof,
+    )

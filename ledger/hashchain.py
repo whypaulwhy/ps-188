@@ -172,6 +172,150 @@ def verify_inclusion(
     return not offered and computed == root
 
 
+def _largest_power_of_two_below(size: int) -> int:
+    """Return the largest power of two strictly less than `size`.
+
+    Args:
+        size: A count greater than one.
+
+    Returns:
+        The split point RFC 6962 uses to divide a tree.
+    """
+    split = 1
+    while split * 2 < size:
+        split *= 2
+    return split
+
+
+def _subproof(old_size: int, leaves: list[bytes], *, complete: bool) -> list[bytes]:
+    """Return the RFC 6962 SUBPROOF for an old log inside a longer one.
+
+    Args:
+        old_size: How many leaves the old log held.
+        leaves: The subtree being descended, oldest first.
+        complete: Whether `old_size` covers this whole subtree, in which case
+            its root is already known to the verifier and is not sent.
+
+    Returns:
+        The proof nodes for this subtree, in verification order.
+    """
+    if old_size == len(leaves):
+        return [] if complete else [merkle_root(leaves)]
+
+    split = _largest_power_of_two_below(len(leaves))
+    if old_size <= split:
+        return [
+            *_subproof(old_size, leaves[:split], complete=complete),
+            merkle_root(leaves[split:]),
+        ]
+    return [
+        *_subproof(old_size - split, leaves[split:], complete=False),
+        merkle_root(leaves[:split]),
+    ]
+
+
+def consistency_proof(leaves: list[bytes], old_size: int) -> tuple[bytes, ...]:
+    """Return a proof that a shorter log is a prefix of this one.
+
+    This is what turns "the log grew" into "the log was only appended to". An
+    inclusion proof says one entry is present; a consistency proof says that
+    everything the log said earlier it still says, and that nothing was removed
+    or rewritten in between. Without it, an operator holding the database can
+    republish a different history and every individual proof still checks out.
+
+    Args:
+        leaves: Every leaf hash in the current log, in order.
+        old_size: How many entries the earlier checkpoint claimed.
+
+    Returns:
+        The proof nodes. Empty when the log has not changed, which is a valid
+        proof rather than a missing one.
+
+    Raises:
+        LedgerError: If `old_size` is negative or larger than the log, which
+            would be a claim about a log this one cannot be an extension of.
+    """
+    if old_size < 0:
+        msg = f"a log cannot have held {old_size} entries"
+        raise LedgerError(msg)
+    if old_size > len(leaves):
+        msg = f"cannot prove consistency with {old_size} entries from a log of {len(leaves)}"
+        raise LedgerError(msg)
+    if old_size == 0 or old_size == len(leaves):
+        return ()
+    return tuple(_subproof(old_size, list(leaves), complete=True))
+
+
+def verify_consistency(
+    *,
+    old_size: int,
+    new_size: int,
+    old_root: bytes,
+    new_root: bytes,
+    proof: tuple[bytes, ...],
+) -> bool:
+    """Report whether a log of `new_size` provably extends one of `old_size`.
+
+    This is the check a third party runs against two checkpoints it was given
+    at different times. It needs no leaves and nothing from the operator.
+
+    Args:
+        old_size: Entry count in the earlier checkpoint.
+        new_size: Entry count in the later checkpoint.
+        old_root: Merkle root the earlier checkpoint committed to.
+        new_root: Merkle root the later checkpoint committed to.
+        proof: The nodes from :func:`consistency_proof`.
+
+    Returns:
+        Whether the later log contains the earlier one unchanged, as a prefix.
+    """
+    if old_size < 0 or new_size < 0 or old_size > new_size:
+        return False
+    if old_size == new_size:
+        return not proof and old_root == new_root
+    if old_size == 0:
+        # Every log extends the empty log, and there is nothing to prove. The
+        # earlier root still has to be the empty one, or the claim is not about
+        # an empty log at all.
+        return not proof and old_root == EMPTY_ROOT
+
+    node, last = old_size - 1, new_size - 1
+    while node % 2:
+        node //= 2
+        last //= 2
+
+    offered = list(proof)
+    if not offered:
+        return False
+
+    # When `node` has reached zero the old log was a complete subtree, so its
+    # root is already known to the verifier and is not repeated in the proof.
+    computed_old = offered.pop(0) if node else old_root
+    computed_new = computed_old
+
+    while node:
+        if node % 2:
+            if not offered:
+                return False
+            sibling = offered.pop(0)
+            computed_old = node_hash(sibling, computed_old)
+            computed_new = node_hash(sibling, computed_new)
+        elif node < last:
+            if not offered:
+                return False
+            computed_new = node_hash(computed_new, offered.pop(0))
+        node //= 2
+        last //= 2
+
+    while last:
+        if not offered:
+            return False
+        computed_new = node_hash(computed_new, offered.pop(0))
+        last //= 2
+
+    return not offered and computed_old == old_root and computed_new == new_root
+
+
 @dataclass(frozen=True)
 class Checkpoint:
     """A signed statement that the log had a given root at a given size.

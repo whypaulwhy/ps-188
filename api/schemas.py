@@ -128,6 +128,17 @@ class ProofOut(BaseModel):
     root: str
 
 
+class ConsistencyOut(BaseModel):
+    """A proof that the log extends an earlier published checkpoint, unchanged."""
+
+    model_config = ConfigDict(frozen=True)
+
+    old_size: int
+    new_size: int
+    proof: tuple[str, ...]
+    root: str
+
+
 class HealthOut(BaseModel):
     """What this deployment can do, and what it cannot."""
 

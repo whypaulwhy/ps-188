@@ -31,6 +31,7 @@ from api.deps import Context, get_context, get_session, new_case_id
 from api.intake import record_capture
 from api.schemas import (
     CheckpointOut,
+    ConsistencyOut,
     HealthOut,
     ProofOut,
     ReviewIn,
@@ -226,6 +227,28 @@ def ledger_checkpoint(
         signed_at=signed.signed_at,
         signature=signed.signature.hex(),
         public_key=public.public_bytes_raw().hex(),
+    )
+
+
+@router.get("/ledger/consistency/{old_size}", response_model=ConsistencyOut)
+def ledger_consistency(old_size: int, session: Session = Depends(get_session)) -> ConsistencyOut:
+    """Prove this log extends an earlier checkpoint of `old_size` entries.
+
+    A third party holding an older checkpoint fetches this and learns that
+    nothing it was told before has been withdrawn or rewritten. That is a
+    stronger claim than any inclusion proof can make on its own.
+    """
+    log = load_log(session)
+    if not 0 <= old_size <= len(log):
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"this log holds {len(log)} entries and cannot be an extension of {old_size}",
+        )
+    return ConsistencyOut(
+        old_size=old_size,
+        new_size=len(log),
+        proof=tuple(node.hex() for node in log.consistency(old_size)),
+        root=log.root().hex(),
     )
 
 

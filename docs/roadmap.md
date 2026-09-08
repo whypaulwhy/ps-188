@@ -790,3 +790,75 @@ accepts a real one and rejects a changed root, a changed entry count, an unknown
 format and an incomplete file; a series that shrinks or is rewritten is reported.
 Publishing without a signing key is refused with exit 2 and writes nothing,
 because an unsigned substitute would look like proof.
+
+
+---
+
+## Phase 14 — Consistency proofs
+
+Phase 13 could publish a checkpoint and a recipient could check its signature.
+What a recipient still could not check was the thing the log exists for: that
+nothing it was told earlier had been withdrawn.
+
+**Why inclusion proofs are not enough.** Whoever holds the database can
+recompute an entirely different history, and in that history every individual
+inclusion proof still verifies. Inclusion says an entry is present in the log
+being shown; it says nothing about whether that log is the same one as
+yesterday's.
+
+- `ledger.hashchain.consistency_proof` and `verify_consistency`, RFC 6962.
+- `TransparencyLog.consistency`, and `GET /ledger/consistency/{old_size}`.
+- `python -m api.publish_checkpoint --since PREVIOUS.json`, so a published
+  checkpoint carries a proof that it extends the last one.
+- `tools/verify_checkpoint.py` checks those proofs, with its own independent
+  implementation.
+
+### The finding that made this safe to build
+
+The tree in `merkle_root` is built level by level, carrying an unpaired node up
+unchanged. That is not how RFC 6962 describes its tree, which splits recursively
+at the largest power of two — so the standard's consistency algorithm could not
+simply be assumed to apply.
+
+**They are the same tree.** A test written directly from RFC 6962 section 2.1
+compares the two constructions at every size from 0 to 64 and they agree
+everywhere. That is what licensed using the standard's well-understood algorithm
+instead of inventing one for a bespoke tree, which for this particular piece of
+code is the difference between a proof and a decoration.
+
+### Tested as a property, not as examples
+
+A consistency proof is exactly the kind of code that is correct on the cases its
+author thought of. So `tests/unit/test_consistency_proof.py` asserts, over
+hypothesis-generated size pairs, that a genuine extension always verifies and
+that changing any entry the earlier checkpoint covered always fails. Truncated
+proofs, extended proofs, proofs from a different log, dropped entries and
+shrinking logs each have their own refusal.
+
+### What the published file now carries
+
+`--since` embeds `from_size`, `from_root` and the proof. A recipient holding a
+series verifies the whole chain **offline**, with no access to the operator at
+all. A checkpoint published without `--since` carries no proof, and the verifier
+says so in those words rather than letting silence read as a proof that passed.
+
+**Exit criteria.** A series published with `--since` reports `PROVED to extend
+the previous checkpoint`. A forged proof, a proof naming a different earlier
+root, and a log that shrank are each reported as problems. Publishing against a
+checkpoint larger than the current log is refused, because a log smaller than one
+it claims to extend has lost entries.
+
+---
+
+## Phase 15 — A preflight check for demonstrations
+
+`tools/demo_preflight.py`. Not part of the system; a tool for the person running
+it. From a phone, every network failure looks identical — "this site can't be
+reached" — whether the server is bound to loopback, the firewall is blocking the
+port, or the port is open on the wrong profile. This distinguishes them.
+
+It changes nothing: opening a firewall port is a security decision that needs
+administrator rights, so the tool prints the command and a person runs it. It
+also states the thing that is easy to forget while getting a demonstration to
+work, which is that reaching the console from another device means running it
+with no authentication on a shared network.
