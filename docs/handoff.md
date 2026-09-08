@@ -70,7 +70,7 @@ changed since:
 ruff             All checks passed
 mypy --strict    no issues in 26 source files (core/ only, per CLAUDE.md)
 import-linter    5 contracts kept, 0 broken
-pytest           1518 passed
+pytest           1546 passed
 coverage         core/ 100.00% branch  (gate fails below 100)
 ```
 
@@ -325,10 +325,15 @@ git -C "D:/ps 188" status --short && git -C "D:/ps 188" log --oneline -3
 cd "D:/ps 188" && uv run ruff check . && uv run mypy --strict core && uv run lint-imports && uv run pytest -q
 ```
 
-Then pick from §6.2. Retention enforcement (b) is done, and so is the console
-upload form (phase 11). **Checkpoint publication (c)** is now the strongest
-candidate: unblocked, small, and ADR 0003 is explicit that an unpublished
-checkpoint proves nothing.
+Then pick from §6.2. Done since: retention enforcement (b, phase 10), the
+console upload form (phase 11), trust anchor configuration (phase 12).
+**Checkpoint publication (c)** is now the strongest candidate: unblocked, small,
+and ADR 0003 is explicit that an unpublished checkpoint proves nothing.
+
+**The highest-value thing overall is still not code**: a real issuer certificate
+(DigiLocker or UIDAI). Phase 12 built the way to install one; nobody has supplied
+one, so no anchor in this repository is real and no document has ever been
+cleared here.
 
 ---
 

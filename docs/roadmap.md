@@ -685,3 +685,58 @@ phone opens the rear camera directly. Reaching it from a phone means binding the
 server to the local network, and there is still no authentication — that pairing
 is a demonstration setting, not a deployment. `deploy/compose.yaml` continues to
 bind to localhost.
+
+
+---
+
+## Phase 12 — Trust anchors, configurable
+
+`trust_store.py` calls itself the highest-value target in the system, and it was
+also the emptiest. Outside tests, no anchor was ever added: `Deployment` built a
+default `TrustStore()` and there was no configuration path to populate it. So
+Rung 0 — the only rung that can clear a document — could never answer, and every
+crossing reached at best `MANUAL_REVIEW`.
+
+That is correct fail-closed behaviour and it is documented as such. It is also
+half a system: a ladder that can only ever refuse is a queue.
+
+- `api/trust.py`: `read_trust_anchors`, from `SENTINELID_TRUST_ANCHORS_FILE`.
+- `api.settings.Settings.trust_store`, and `NO_TRUST_ANCHORS` in `unavailable()`.
+- `api.deps.build_context` now hands the store to the `Deployment`.
+
+### Three rules the reader enforces
+
+**Nothing is discovered.** The anchors file is a path an operator supplied, and
+certificates are files they put there. There is deliberately no fallback to the
+operating system's certificate store: those roots exist to authenticate web
+servers, and inheriting them would mean trusting several hundred commercial
+authorities to attest to identity documents.
+
+**Permitted algorithms are stated, never derived.** A certificate contains a key
+that several constructions would accept; it does not say which are intended.
+Inferring the set would silently widen trust whenever a key type gained a new
+construction, so the file has to name them and an unknown name is refused with
+the list of valid ones.
+
+**A validity window may be narrowed, never widened.** The window comes from the
+certificate. An operator may stop trusting an issuer early; one who tries to
+extend trust past the certificate's own expiry is refused, because that is not
+configuring an anchor, it is overriding the issuer.
+
+Both encodings are accepted — a `.cer` exported from Windows is DER, a `.pem`
+from anything else is base64 — because requiring one means converting files at a
+checkpoint. A byte order mark is accepted for the same reason it is in the
+retention policy reader.
+
+**Exit criteria.** A deployment given an anchor file holds anchors and stops
+saying it cannot confirm any document. A deployment given none says so on every
+case. Widening is refused, narrowing works, and a malformed anchors file refuses
+the start-up rather than quietly producing an empty store — the failure that
+would otherwise reject genuine documents with no explanation.
+
+### What this does not do
+
+It does not add a real issuer. Nobody has yet supplied a genuine DigiLocker or
+UIDAI certificate, so the only anchors that exist are generated in tests. The
+machinery is ready; the trust decision is a human one, and the anchors file is
+where somebody makes it deliberately and on the record.

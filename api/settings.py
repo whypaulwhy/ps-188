@@ -32,8 +32,10 @@ from typing import Final
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
+from api.trust import TrustConfigurationError, read_trust_anchors
 from core.privacy.hashing import DeploymentKey
 from core.privacy.retention import ArtefactCategory, RetentionPolicy
+from detectors.rung0_crypto.trust_store import TrustStore
 
 DATABASE_URL: Final[str] = "SENTINELID_DB_URL"
 CHECKPOINT_ID: Final[str] = "SENTINELID_CHECKPOINT_ID"
@@ -41,6 +43,7 @@ HASH_KEY_FILE: Final[str] = "SENTINELID_HASH_KEY_FILE"
 LEDGER_KEY_FILE: Final[str] = "SENTINELID_LEDGER_KEY_FILE"
 MAX_UPLOAD_BYTES: Final[str] = "SENTINELID_MAX_UPLOAD_BYTES"
 RETENTION_POLICY_FILE: Final[str] = "SENTINELID_RETENTION_POLICY_FILE"
+TRUST_ANCHORS_FILE: Final[str] = "SENTINELID_TRUST_ANCHORS_FILE"
 
 DEFAULT_MAX_UPLOAD_BYTES: Final[int] = 15 * 1024 * 1024
 """A cap on one capture. A policy limit, not a measurement of anything."""
@@ -49,6 +52,18 @@ NO_LEDGER_KEY: Final[str] = (
     "This checkpoint holds no signing key, so no ledger checkpoint can be published "
     "and no third party can yet verify these records."
 )
+NO_TRUST_ANCHORS: Final[str] = (
+    "This checkpoint holds no issuer keys, so no document can be confirmed "
+    "genuine here. Every document will need a person to decide."
+)
+"""The most consequential absence in the system, said on every case.
+
+Rung 0 is the only rung that can clear a document. With no anchors it can never
+answer, so every crossing reaches at best MANUAL_REVIEW. That is correct and
+fail-closed, and it is also the difference between a screening system and a
+queue, so it is not something to leave implicit.
+"""
+
 NO_RETENTION_POLICY: Final[str] = (
     "This checkpoint has no retention policy, so nothing stored here is ever "
     "destroyed. Records are being kept indefinitely."
@@ -90,6 +105,14 @@ class Settings:
     max_upload_bytes: int = DEFAULT_MAX_UPLOAD_BYTES
     """Largest accepted capture."""
 
+    trust_store: TrustStore = dataclasses.field(default_factory=TrustStore)
+    """The issuer keys this checkpoint will rely on.
+
+    Empty by default, and empty is a legitimate state: it means nothing can be
+    cleared cryptographically. It is never populated by discovery — an anchor is
+    a file an operator put there deliberately.
+    """
+
     retention_policy: RetentionPolicy | None = None
     """How long each kind of stored artefact may be kept.
 
@@ -112,9 +135,24 @@ class Settings:
             missing.append(NO_LEDGER_KEY)
         if self.hash_key is None:
             missing.append(NO_HASH_KEY)
+        if len(self.trust_store) == 0:
+            missing.append(NO_TRUST_ANCHORS)
         if self.retention_policy is None:
             missing.append(NO_RETENTION_POLICY)
         return tuple(missing)
+
+
+def _read_anchors(path: pathlib.Path) -> TrustStore:
+    """Read trust anchors, reporting a bad file the way every other setting does.
+
+    Wrapped so that a caller catching `ConfigurationError` at start-up catches
+    this too. A deployment that failed to start for one reason and crashed for
+    another would be a worse thing to debug at a checkpoint.
+    """
+    try:
+        return read_trust_anchors(path)
+    except TrustConfigurationError as error:
+        raise ConfigurationError(str(error)) from error
 
 
 def _required(name: str) -> str:
@@ -222,6 +260,7 @@ def from_environment() -> Settings:
     """
     hash_key_file = os.environ.get(HASH_KEY_FILE, "").strip()
     retention_file = os.environ.get(RETENTION_POLICY_FILE, "").strip()
+    anchors_file = os.environ.get(TRUST_ANCHORS_FILE, "").strip()
     ledger_key_file = os.environ.get(LEDGER_KEY_FILE, "").strip()
     limit = os.environ.get(MAX_UPLOAD_BYTES, "").strip()
 
@@ -231,6 +270,7 @@ def from_environment() -> Settings:
         hash_key=_read_hash_key(pathlib.Path(hash_key_file)) if hash_key_file else None,
         ledger_key=_read_ledger_key(pathlib.Path(ledger_key_file)) if ledger_key_file else None,
         max_upload_bytes=int(limit) if limit else DEFAULT_MAX_UPLOAD_BYTES,
+        trust_store=(_read_anchors(pathlib.Path(anchors_file)) if anchors_file else TrustStore()),
         retention_policy=(
             read_retention_policy(pathlib.Path(retention_file)) if retention_file else None
         ),

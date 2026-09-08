@@ -30,6 +30,7 @@ from api.settings import (
     Settings,
     from_environment,
 )
+from tests.support import write_anchors_file
 
 URL = "sqlite+pysqlite:///./test.db"
 
@@ -69,6 +70,7 @@ def test_settings_read_from_the_environment(
     monkeypatch.setenv(settings_module.HASH_KEY_FILE, str(_write_hash_key(tmp_path)))
     monkeypatch.setenv(settings_module.LEDGER_KEY_FILE, str(write_ledger_key(tmp_path)))
     monkeypatch.setenv(settings_module.RETENTION_POLICY_FILE, str(write_retention_policy(tmp_path)))
+    monkeypatch.setenv(settings_module.TRUST_ANCHORS_FILE, str(write_anchors_file(tmp_path)))
 
     settings = from_environment()
 
@@ -77,6 +79,7 @@ def test_settings_read_from_the_environment(
     assert settings.hash_key is not None
     assert settings.ledger_key is not None
     assert settings.retention_policy is not None
+    assert len(settings.trust_store) == 1
     assert settings.unavailable() == ()
 
 

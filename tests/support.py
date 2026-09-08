@@ -8,8 +8,17 @@ immediately what is being tested.
 from __future__ import annotations
 
 import datetime
+import json
+import pathlib
 from typing import Any, Final
 
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509.oid import NameOID
+
+from api.trust import load_certificate
 from core.contracts import (
     Artefact,
     DocumentType,
@@ -20,6 +29,11 @@ from core.contracts import (
     Subject,
     TextZone,
     ZoneName,
+)
+from detectors.rung0_crypto.trust_store import (
+    SignatureAlgorithm,
+    TrustAnchor,
+    TrustStore,
 )
 
 DIGEST: Final[str] = "a" * 64
@@ -117,3 +131,98 @@ def subject(**overrides: Any) -> Subject:  # noqa: ANN401
     }
     fields.update(overrides)
     return Subject(**fields)
+
+
+def self_signed_certificate(
+    folder: pathlib.Path,
+    *,
+    name: str = "issuer.pem",
+    common_name: str = "Utopia Issuing Authority",
+    not_before: datetime.datetime | None = None,
+    not_after: datetime.datetime | None = None,
+    encoding: Encoding = Encoding.PEM,
+) -> pathlib.Path:
+    """Write one self-signed certificate for an imaginary issuer.
+
+    Generated rather than committed: a committed certificate means a key pair in
+    the repository, and the private half has to exist for the fixture to be
+    built at all.
+
+    Args:
+        folder: Where to write it.
+        name: The file name, which also decides the extension a reader sees.
+        common_name: The subject, which no test asserts on but a person reading
+            a failure will.
+        not_before: Start of validity. Defaults to a year ago.
+        not_after: End of validity. Defaults to a year ahead.
+        encoding: PEM or DER, both of which the reader must accept.
+
+    Returns:
+        The path written.
+    """
+    start = not_before or (datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=365))
+    end = not_after or (datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=365))
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
+    certificate = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(start.replace(tzinfo=None))
+        .not_valid_after(end.replace(tzinfo=None))
+        .sign(key, hashes.SHA256())
+    )
+    path = folder / name
+    path.write_bytes(certificate.public_bytes(encoding))
+    return path
+
+
+def one_anchor_store(folder: pathlib.Path, *, issuer_id: str = "utopia") -> TrustStore:
+    """Return a trust store holding exactly one anchor, for an equipped deployment.
+
+    Args:
+        folder: Somewhere to put the generated certificate.
+        issuer_id: What to call the issuer.
+
+    Returns:
+        The store. A deployment holding this can reach `CLEARED`; one holding an
+        empty store cannot, and says so on every case.
+    """
+    certificate = load_certificate(self_signed_certificate(folder))
+    return TrustStore(
+        [
+            TrustAnchor(
+                issuer_id=issuer_id,
+                public_key=certificate.public_key(),
+                permitted_algorithms=frozenset({SignatureAlgorithm.RSA_PKCS1V15_SHA256}),
+                not_before=certificate.not_valid_before_utc,
+                not_after=certificate.not_valid_after_utc,
+                certificate_der=certificate.public_bytes(Encoding.DER),
+            )
+        ]
+    )
+
+
+def write_anchors_file(folder: pathlib.Path) -> pathlib.Path:
+    """Write a complete anchors file plus the certificate it names.
+
+    Returns:
+        The anchors file, ready for `SENTINELID_TRUST_ANCHORS_FILE`.
+    """
+    self_signed_certificate(folder)
+    path = folder / "anchors.json"
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "issuer_id": "utopia",
+                    "certificate": "issuer.pem",
+                    "permitted_algorithms": ["RSA_PKCS1V15_SHA256"],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return path

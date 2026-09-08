@@ -37,6 +37,7 @@ from db.session import create_session_factory
 from detectors.base import registered
 from explain.renderer import NOT_CHECKED_HEADING
 from ledger.hashchain import Checkpoint, verify_checkpoint, verify_inclusion
+from tests.support import one_anchor_store
 
 CHECKPOINT_ID = "raxaul-03"
 GARBAGE = b"this is not a document"
@@ -56,6 +57,7 @@ def settings(tmp_path: pathlib.Path, signing_key: Ed25519PrivateKey) -> Settings
         checkpoint_id=CHECKPOINT_ID,
         hash_key=DeploymentKey(b"k" * 32),
         ledger_key=signing_key,
+        trust_store=one_anchor_store(tmp_path),
         retention_policy=RetentionPolicy(
             windows={
                 ArtefactCategory.FACE_EMBEDDING: datetime.timedelta(days=7),

@@ -100,6 +100,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "api.screening",
         "api.settings",
         "api.intake",
+        "api.trust",
         "api.retention_job",
         "core.contracts.review",
         "core.contracts.destruction",

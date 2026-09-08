@@ -99,7 +99,7 @@ def build_context(settings: Settings, *, create: bool = False) -> Context:
     """
     return Context(
         settings=settings,
-        deployment=Deployment(settings=settings),
+        deployment=Deployment(settings=settings, trust_store=settings.trust_store),
         session_factory=create_session_factory(settings.database_url, create=create),
     )
 
