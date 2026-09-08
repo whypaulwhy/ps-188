@@ -37,7 +37,7 @@ from typing import Any, Final
 
 from pydantic import BaseModel
 
-from core.contracts import OfficerReview, Verdict
+from core.contracts import DestructionRecord, OfficerReview, Verdict
 from ledger.hashchain import (
     Checkpoint,
     inclusion_proof,
@@ -101,6 +101,23 @@ def canonical_verdict_bytes(verdict: Verdict) -> bytes:
         Canonical JSON bytes.
     """
     return _canonical_bytes(verdict)
+
+
+def canonical_destruction_bytes(destruction: DestructionRecord) -> bytes:
+    """Return the stable serialisation a destruction record is digested from.
+
+    A destruction carries no volatile field, so nothing is stripped from it in
+    practice. It goes through the same function as a verdict and a review
+    because the log has to treat every kind of record identically; a second
+    canonical form is one more thing that can drift.
+
+    Args:
+        destruction: The destruction to serialise.
+
+    Returns:
+        Canonical JSON bytes.
+    """
+    return _canonical_bytes(destruction)
 
 
 def canonical_review_bytes(review: OfficerReview) -> bytes:
@@ -180,6 +197,39 @@ class TransparencyLog:
         """
         digest = leaf_hash(canonical_review_bytes(review)).hex()
         return self.append(LedgerEntry(review.case_id, digest, review.recorded_at))
+
+    def record_destruction(self, destruction: DestructionRecord) -> int:
+        """Record a lawful destruction as its own entry.
+
+        The entry for the decision that was destroyed stays exactly where it is.
+        Removing it would break the Merkle chain for everything appended after
+        it, which is the one failure this log cannot recover from. So a
+        destruction is an append like any other, and the log reads as the
+        sequence of what happened to a case: decided, reviewed, destroyed.
+
+        Args:
+            destruction: What was destroyed, and under which policy.
+
+        Returns:
+            The index of the new entry.
+        """
+        digest = leaf_hash(canonical_destruction_bytes(destruction)).hex()
+        return self.append(LedgerEntry(destruction.case_id, digest, destruction.destroyed_at))
+
+    def matches_destruction(self, destruction: DestructionRecord, *, index: int) -> bool:
+        """Report whether a destruction digests to what was logged at an index.
+
+        Args:
+            destruction: The destruction to check.
+            index: The entry to compare against.
+
+        Returns:
+            Whether the digests agree.
+        """
+        if not 0 <= index < len(self._entries):
+            return False
+        digest = leaf_hash(canonical_destruction_bytes(destruction)).hex()
+        return self._entries[index].verdict_digest == digest
 
     def matches_review(self, review: OfficerReview, *, index: int) -> bool:
         """Report whether a review digests to what was logged at an index.

@@ -22,9 +22,11 @@ from fastapi.testclient import TestClient
 from api.app import app_for
 from api.settings import NO_LEDGER_KEY, Settings
 from core.contracts import Decision, Evidence, Result, Rung, Verdict
+from core.privacy.retention import ArtefactCategory, RetentionPolicy
 from core.standards.verhoeff import verhoeff_digit
 from core.trust.ladder import resolve
 from db.recording import load_case, record_screening
+from db.retention import sweep
 from db.session import create_session_factory
 from tests.support import DECIDED_AT, provenance
 
@@ -148,6 +150,77 @@ def test_an_unknown_case_says_what_that_means(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert "not the same as the case having been cleared" in response.text
+
+
+def sweep_everything(settings: Settings) -> None:
+    """Destroy every stored case, by applying a policy that has already expired."""
+    policy = RetentionPolicy(
+        windows={
+            ArtefactCategory.FACE_EMBEDDING: datetime.timedelta(days=1),
+            ArtefactCategory.PORTRAIT_CROP: datetime.timedelta(days=1),
+            ArtefactCategory.DOCUMENT_IMAGE: datetime.timedelta(days=1),
+            ArtefactCategory.EVIDENCE_EXHIBIT: datetime.timedelta(days=1),
+            ArtefactCategory.CASE_RECORD: datetime.timedelta(days=1),
+            ArtefactCategory.LEDGER_ENTRY: datetime.timedelta(days=3650),
+        }
+    )
+    factory = create_session_factory(settings.database_url)
+    with factory() as session:
+        sweep(session, policy=policy, now=WHEN + datetime.timedelta(days=2))
+
+
+def test_a_destroyed_case_says_it_was_destroyed(client: TestClient, settings: Settings) -> None:
+    """A lawful destruction must not read as a record that went missing.
+
+    410 rather than 404: the identifier was valid and the thing it named is
+    deliberately gone, which is exactly what that status means.
+    """
+    case_id = seed(settings, "case-1")
+    sweep_everything(settings)
+
+    response = client.get(f"/console/case/{case_id}")
+
+    assert response.status_code == 410
+    assert "destroyed" in response.text.lower()
+    assert "retention" in response.text.lower()
+
+
+def test_a_destroyed_case_does_not_claim_it_never_existed(
+    client: TestClient, settings: Settings
+) -> None:
+    """The other half: the wording for a case nobody recorded must not appear."""
+    case_id = seed(settings, "case-1")
+    sweep_everything(settings)
+
+    text = client.get(f"/console/case/{case_id}").text
+
+    assert "nothing by that identifier was ever recorded" not in text
+
+
+def test_a_destroyed_case_does_not_show_what_it_decided(
+    client: TestClient, settings: Settings
+) -> None:
+    """The decision died with the case. The page must not resurrect it."""
+    case_id = seed(settings, "case-1", unresolved())
+    sweep_everything(settings)
+
+    text = without_styles(client.get(f"/console/case/{case_id}").text)
+
+    for decision in (Decision.CLEARED.value, Decision.REJECTED.value):
+        assert decision not in text
+
+
+def test_a_destroyed_case_says_the_audit_trail_survives(
+    client: TestClient, settings: Settings
+) -> None:
+    """An officer needs to know what is still provable, not only what is gone."""
+    case_id = seed(settings, "case-1")
+    sweep_everything(settings)
+
+    text = client.get(f"/console/case/{case_id}").text.lower()
+
+    assert "audit trail" in text
+    assert "not" in text
 
 
 def test_recording_a_decision_redirects_and_sticks(client: TestClient, settings: Settings) -> None:

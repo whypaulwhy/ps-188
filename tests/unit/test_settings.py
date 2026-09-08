@@ -13,6 +13,7 @@ to reach the officer in a sentence, not sit in a log nobody reads.
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import pytest
@@ -67,6 +68,7 @@ def test_settings_read_from_the_environment(
     monkeypatch.setenv(settings_module.CHECKPOINT_ID, "raxaul-03")
     monkeypatch.setenv(settings_module.HASH_KEY_FILE, str(_write_hash_key(tmp_path)))
     monkeypatch.setenv(settings_module.LEDGER_KEY_FILE, str(write_ledger_key(tmp_path)))
+    monkeypatch.setenv(settings_module.RETENTION_POLICY_FILE, str(write_retention_policy(tmp_path)))
 
     settings = from_environment()
 
@@ -74,7 +76,27 @@ def test_settings_read_from_the_environment(
     assert settings.checkpoint_id == "raxaul-03"
     assert settings.hash_key is not None
     assert settings.ledger_key is not None
+    assert settings.retention_policy is not None
     assert settings.unavailable() == ()
+
+
+def write_retention_policy(folder: pathlib.Path) -> pathlib.Path:
+    """Write a complete retention policy. Incomplete ones are refused elsewhere."""
+    path = folder / "retention.json"
+    path.write_text(
+        json.dumps(
+            {
+                "FACE_EMBEDDING": 7,
+                "PORTRAIT_CROP": 7,
+                "DOCUMENT_IMAGE": 14,
+                "EVIDENCE_EXHIBIT": 14,
+                "CASE_RECORD": 30,
+                "LEDGER_ENTRY": 3650,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
 
 
 def _write_hash_key(folder: pathlib.Path) -> pathlib.Path:

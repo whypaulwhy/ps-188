@@ -99,8 +99,11 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "api.schemas",
         "api.screening",
         "api.settings",
+        "api.retention_job",
         "core.contracts.review",
+        "core.contracts.destruction",
         "db.recording",
+        "db.retention",
         "ui.console",
     }
 )

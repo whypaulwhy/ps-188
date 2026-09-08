@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Destroyed under retention - SENTINEL ID{% endblock %}
+
+{% block main %}
+<h1>This case has been destroyed</h1>
+<div class="card missing">
+  <p>
+    The record for case <strong>{{ case_id }}</strong> was destroyed on
+    <strong>{{ destruction.destroyed_at.strftime("%Y-%m-%d %H:%M") }} UTC</strong>,
+    under this checkpoint's retention policy. It cannot be recovered.
+  </p>
+  <p class="rule">
+    That is not a fault and nothing has gone missing. The record reached the end
+    of the period this checkpoint is allowed to keep it, and was destroyed
+    because it had. What the case decided is no longer held here by anyone,
+    including this system.
+  </p>
+</div>
+
+<h2>What was destroyed</h2>
+<table>
+  <tr><th>Recorded</th><td>{{ destruction.original_created_at.strftime("%Y-%m-%d %H:%M") }} UTC</td></tr>
+  <tr><th>Kept for</th><td>{{ destruction.window.days }} day(s)</td></tr>
+  <tr><th>Destroyed</th><td>{{ destruction.destroyed_at.strftime("%Y-%m-%d %H:%M") }} UTC</td></tr>
+  <tr><th>Checkpoint</th><td>{{ destruction.checkpoint_id }}</td></tr>
+  <tr>
+    <th>Officer notes destroyed</th>
+    <td>{{ destruction.reviews_destroyed }}</td>
+  </tr>
+</table>
+
+<h2>What still exists</h2>
+<div class="card">
+  <p class="rule">
+    The audit trail still records that a decision was made about this case, when
+    it was made, and that it has not been altered since. It does <strong>not</strong>
+    record what the decision was - that was part of the case record, and it is
+    gone. The destruction itself was added to the audit trail as well, so this
+    page can be checked against it.
+  </p>
+</div>
+
+<p><a href="{{ base }}/">Back to the queue</a></p>
+{% endblock %}

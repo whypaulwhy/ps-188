@@ -28,17 +28,18 @@ import dataclasses
 import datetime
 from typing import Final
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.contracts import Decision, OfficerReview, Verdict
+from core.contracts import Decision, DestructionRecord, OfficerReview, Verdict
 from db.guards import RawIdentifierError
-from db.models import CaseRecord, LedgerLeaf, ReviewRecord
+from db.models import CaseRecord, DestructionRow, LedgerLeaf, ReviewRecord
 from ledger.hashchain import leaf_hash
 from ledger.interface import (
     LedgerEntry,
     TransparencyLog,
+    canonical_destruction_bytes,
     canonical_review_bytes,
     canonical_verdict_bytes,
 )
@@ -174,6 +175,70 @@ def record_review(session: Session, review: OfficerReview) -> int:
         recorded_at=review.recorded_at,
     )
     return _append_with_retry(session, record, entry)
+
+
+def record_destruction(session: Session, destruction: DestructionRecord) -> int:
+    """Destroy one case and everything belonging to it, in a single transaction.
+
+    Four things happen together or not at all: the officer reviews go, the case
+    row goes, a tombstone is written, and a ledger entry records the
+    destruction. A case deleted without its tombstone is a record that
+    vanished; a tombstone without the deletion is a false statement in an audit
+    trail.
+
+    The case's existing ledger leaves are **not** touched. Removing one breaks
+    the Merkle chain for every entry after it and invalidates every checkpoint
+    ever published. That is why the log holds a digest rather than a verdict;
+    see ADR 0006.
+
+    Args:
+        session: An open session, committed on success and rolled back on
+            failure.
+        destruction: What is being destroyed, and under which policy.
+
+    Returns:
+        The leaf index of the new ledger entry.
+
+    Raises:
+        RecordingError: If the destruction could not be written. Nothing
+            partial survives.
+    """
+    session.execute(delete(ReviewRecord).where(ReviewRecord.case_id == destruction.case_id))
+    session.execute(delete(CaseRecord).where(CaseRecord.case_id == destruction.case_id))
+
+    row = DestructionRow(
+        case_id=destruction.case_id,
+        checkpoint_id=destruction.checkpoint_id,
+        category=destruction.category.value,
+        window_seconds=int(destruction.window.total_seconds()),
+        original_created_at=destruction.original_created_at,
+        destroyed_at=destruction.destroyed_at,
+        reviews_destroyed=destruction.reviews_destroyed,
+        destruction_json=destruction.model_dump_json(),
+    )
+    entry = LedgerEntry(
+        case_id=destruction.case_id,
+        verdict_digest=leaf_hash(canonical_destruction_bytes(destruction)).hex(),
+        recorded_at=destruction.destroyed_at,
+    )
+    return _append_with_retry(session, row, entry)
+
+
+def load_destruction(session: Session, case_id: str) -> DestructionRecord | None:
+    """Read the tombstone for a destroyed case, if there is one.
+
+    Args:
+        session: An open session.
+        case_id: Which case to look for.
+
+    Returns:
+        The destruction record, or None if this case was never destroyed here —
+        which includes the ordinary case of one that never existed at all.
+    """
+    row = session.get(DestructionRow, case_id)
+    if row is None:
+        return None
+    return DestructionRecord.model_validate_json(row.destruction_json)
 
 
 def _append_with_retry(session: Session, record: object, entry: LedgerEntry) -> int:

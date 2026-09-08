@@ -6,6 +6,7 @@ is an implementation detail; this surface is the contract.
 
 from __future__ import annotations
 
+from core.contracts.destruction import DestructionRecord
 from core.contracts.enums import (
     RESULTS_BY_RUNG,
     SCORED_RUNGS,
@@ -36,6 +37,7 @@ __all__ = [
     "Artefact",
     "Decision",
     "DecodedCode",
+    "DestructionRecord",
     "DocumentType",
     "Evidence",
     "Finding",

@@ -23,6 +23,8 @@ proof.
 from __future__ import annotations
 
 import dataclasses
+import datetime
+import json
 import os
 import pathlib
 from typing import Final
@@ -31,12 +33,14 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from core.privacy.hashing import DeploymentKey
+from core.privacy.retention import ArtefactCategory, RetentionPolicy
 
 DATABASE_URL: Final[str] = "SENTINELID_DB_URL"
 CHECKPOINT_ID: Final[str] = "SENTINELID_CHECKPOINT_ID"
 HASH_KEY_FILE: Final[str] = "SENTINELID_HASH_KEY_FILE"
 LEDGER_KEY_FILE: Final[str] = "SENTINELID_LEDGER_KEY_FILE"
 MAX_UPLOAD_BYTES: Final[str] = "SENTINELID_MAX_UPLOAD_BYTES"
+RETENTION_POLICY_FILE: Final[str] = "SENTINELID_RETENTION_POLICY_FILE"
 
 DEFAULT_MAX_UPLOAD_BYTES: Final[int] = 15 * 1024 * 1024
 """A cap on one capture. A policy limit, not a measurement of anything."""
@@ -45,6 +49,18 @@ NO_LEDGER_KEY: Final[str] = (
     "This checkpoint holds no signing key, so no ledger checkpoint can be published "
     "and no third party can yet verify these records."
 )
+NO_RETENTION_POLICY: Final[str] = (
+    "This checkpoint has no retention policy, so nothing stored here is ever "
+    "destroyed. Records are being kept indefinitely."
+)
+"""Said out loud, because an unenforced retention policy is invisible otherwise.
+
+Rules 3 and 4 of CLAUDE.md put limits on how long identifiers and biometrics may
+be held. A deployment with no policy file keeps everything forever, and there is
+nothing on screen to reveal it. That is silence about a check that did not
+happen, which CLAUDE.md calls a defect.
+"""
+
 NO_HASH_KEY: Final[str] = (
     "This checkpoint holds no hashing key, so repeat-crossing and watchlist checks "
     "were not consulted."
@@ -74,6 +90,15 @@ class Settings:
     max_upload_bytes: int = DEFAULT_MAX_UPLOAD_BYTES
     """Largest accepted capture."""
 
+    retention_policy: RetentionPolicy | None = None
+    """How long each kind of stored artefact may be kept.
+
+    Optional here, and absent by default, because there is no safe default
+    window and inventing one would put an invented day count into production as
+    policy. A deployment without one can still screen documents; it simply never
+    destroys anything, and :meth:`unavailable` says so.
+    """
+
     def unavailable(self) -> tuple[str, ...]:
         """Return what this deployment cannot do, in sentences an officer reads.
 
@@ -87,6 +112,8 @@ class Settings:
             missing.append(NO_LEDGER_KEY)
         if self.hash_key is None:
             missing.append(NO_HASH_KEY)
+        if self.retention_policy is None:
+            missing.append(NO_RETENTION_POLICY)
         return tuple(missing)
 
 
@@ -97,6 +124,61 @@ def _required(name: str) -> str:
         msg = f"{name} is not set, and there is no safe default for it"
         raise ConfigurationError(msg)
     return value
+
+
+def read_retention_policy(path: pathlib.Path) -> RetentionPolicy:
+    """Read a retention policy from a JSON file of whole days per category.
+
+    The file names every category explicitly. `RetentionPolicy` refuses to
+    construct if one is missing, which is the point: the deployment does not
+    start destroying things until somebody has answered every question.
+
+    Args:
+        path: The policy file. A JSON object mapping each `ArtefactCategory`
+            name to a positive number of days. A UTF-8 byte order mark is
+            accepted, because Windows tooling writes one.
+
+    Returns:
+        The policy.
+
+    Raises:
+        ConfigurationError: If the file cannot be read, is not the expected
+            shape, or leaves a category unanswered. Refused rather than
+            defaulted, for the same reason the windows have no defaults.
+    """
+    try:
+        # utf-8-sig, not utf-8: PowerShell writes a byte order mark by default on
+        # Windows, and refusing an operator's policy file over an invisible
+        # character is a trap. Without a mark it is identical to utf-8.
+        loaded = json.loads(path.read_text(encoding="utf-8-sig"))
+    except OSError as error:
+        msg = f"cannot read the retention policy at {path}: {error}"
+        raise ConfigurationError(msg) from error
+    except json.JSONDecodeError as error:
+        msg = f"the retention policy at {path} is not valid JSON: {error}"
+        raise ConfigurationError(msg) from error
+
+    if not isinstance(loaded, dict):
+        msg = f"the retention policy at {path} must be a JSON object of category to days"
+        raise ConfigurationError(msg)
+
+    windows: dict[ArtefactCategory, datetime.timedelta] = {}
+    for name, days in loaded.items():
+        try:
+            category = ArtefactCategory(name)
+        except ValueError as error:
+            msg = f"{name!r} in {path} is not a retention category"
+            raise ConfigurationError(msg) from error
+        if not isinstance(days, int | float) or isinstance(days, bool):
+            msg = f"the window for {name} in {path} must be a number of days"
+            raise ConfigurationError(msg)
+        windows[category] = datetime.timedelta(days=days)
+
+    try:
+        return RetentionPolicy(windows=windows)
+    except ValueError as error:
+        msg = f"the retention policy at {path} is not usable: {error}"
+        raise ConfigurationError(msg) from error
 
 
 def _read_hash_key(path: pathlib.Path) -> DeploymentKey:
@@ -139,6 +221,7 @@ def from_environment() -> Settings:
             running on without it would hide that they had not.
     """
     hash_key_file = os.environ.get(HASH_KEY_FILE, "").strip()
+    retention_file = os.environ.get(RETENTION_POLICY_FILE, "").strip()
     ledger_key_file = os.environ.get(LEDGER_KEY_FILE, "").strip()
     limit = os.environ.get(MAX_UPLOAD_BYTES, "").strip()
 
@@ -148,4 +231,7 @@ def from_environment() -> Settings:
         hash_key=_read_hash_key(pathlib.Path(hash_key_file)) if hash_key_file else None,
         ledger_key=_read_ledger_key(pathlib.Path(ledger_key_file)) if ledger_key_file else None,
         max_upload_bytes=int(limit) if limit else DEFAULT_MAX_UPLOAD_BYTES,
+        retention_policy=(
+            read_retention_policy(pathlib.Path(retention_file)) if retention_file else None
+        ),
     )

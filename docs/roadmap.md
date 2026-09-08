@@ -578,5 +578,69 @@ to `db/models.py` would pass every test — they build their schema with
 - Checkpoint publication. The system signs checkpoints; nothing yet carries them
   off the box, and ADR 0003 is explicit that an unpublished checkpoint proves
   nothing.
-- Retention enforcement. `core/privacy/retention.py` decides what may be kept;
-  nothing yet runs on a schedule to delete it.
+- ~~Retention enforcement.~~ **Done, phase 10.** See below.
+
+
+---
+
+## Phase 10 — Retention, enforced (partial)
+
+Phase 9 shipped three named gaps. This phase closes the first of them.
+
+`core/privacy/retention.py` had decided what may be kept since phase 3, and
+nothing acted on it, so a deployment kept every case forever. Rules 3 and 4 of
+CLAUDE.md put limits on how long identifiers and biometrics may be held; those
+limits were written down and enforced by nothing.
+
+- `core/contracts/destruction.py`: `DestructionRecord`, the tombstone.
+- `db/retention.py`: which cases are due, and what destroying one would record.
+- `db.recording.record_destruction`: the four-part write, atomic.
+- `api/retention_job.py`: `python -m api.retention_job`, with `--dry-run`.
+- `ui/templates/destroyed.html`: what an officer sees instead of a 404.
+
+**Exit criteria met.** A case past its window is destroyed, its officer reviews
+with it. A case inside its window is untouched. Every ledger leaf that existed
+before a sweep still verifies its own inclusion afterwards, which is the claim
+this had to not break. The destruction is itself appended to the log.
+
+### Five decisions, taken deliberately
+
+**The decision does not survive retention.** The tombstone carries no
+`CLEARED`, no `REJECTED`, no verdict. ADR 0006 already accepted that a destroyed
+case leaves a log proving a decision was made but not what it said; carrying the
+outcome forward here would have quietly reversed that and made the policy
+cosmetic. A test asserts none of those strings appears in what is stored.
+
+**Officer reviews die with their case.** A review is a named officer and a note
+in their own words. It belongs to the case and has no meaning without it.
+
+**Destruction is an appended entry, never a deletion.** No ledger leaf is ever
+removed — deleting one breaks the Merkle chain for every entry after it and
+invalidates every checkpoint ever published.
+
+**410, not 404, for a destroyed case.** The identifier was valid and the thing
+it named is deliberately gone. `missing.html` already said a missing case "is
+not the same as the case having been cleared, rejected or deleted", and that
+sentence only became true once destruction had a page of its own.
+
+**No scheduler.** A command, not a daemon. What deletes records at a border post
+should be visible in a crontab, disablable, and runnable by hand while somebody
+watches the output — not a timer firing inside a web server that nobody
+configured. The command refuses to run without a policy and exits 2, so a
+scheduler cannot report healthy while keeping everything.
+
+### One thing found by running it
+
+The policy loader reads `utf-8-sig` rather than `utf-8`. Windows PowerShell
+writes a byte order mark by default, so the first policy file written on the
+development machine was refused over an invisible character. The refusal was
+correct and the message was clear; accepting a mark is still the right
+behaviour, because the alternative is an operator debugging an encoding at a
+checkpoint.
+
+### What phase 10 leaves
+
+- Retention applies to `CASE_RECORD` only. The other five categories have
+  windows and nothing sweeps them, because nothing yet stores a document image,
+  a portrait crop or an embedding to sweep. When something does, it goes here.
+- Checkpoint publication and authentication, both still open from phase 9.

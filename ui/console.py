@@ -33,7 +33,13 @@ from starlette.templating import Jinja2Templates
 
 from core.contracts import Decision, OfficerReview
 from db.guards import RawIdentifierError
-from db.recording import RecordingError, load_case, recent_cases, record_review
+from db.recording import (
+    RecordingError,
+    load_case,
+    load_destruction,
+    recent_cases,
+    record_review,
+)
 from explain.renderer import render_verdict
 
 TEMPLATES = Jinja2Templates(directory=str(pathlib.Path(__file__).parent / "templates"))
@@ -84,12 +90,29 @@ async def queue(request: Request) -> Response:
 
 
 def _case_page(request: Request, case_id: str, *, error: str | None = None) -> Response:
-    """Render one case, or a 404 page if this deployment has no such case."""
+    """Render one case, or explain why it cannot be shown.
+
+    Three outcomes, deliberately distinct: the case, a page saying it was
+    destroyed under retention, or a page saying nothing by that identifier was
+    ever recorded here.
+    """
     context = _context_of(request)
     with context.session_factory() as session:
         view = load_case(session, case_id)
 
     if view is None:
+        # A destroyed case and a case that never existed are different facts, and
+        # an officer must be able to tell them apart. Showing "no such case" for
+        # a lawful destruction would read as a record that went missing.
+        with context.session_factory() as session:
+            tombstone = load_destruction(session, case_id)
+        if tombstone is not None:
+            return TEMPLATES.TemplateResponse(
+                request,
+                "destroyed.html",
+                {"base": _base(request), "case_id": case_id, "destruction": tombstone},
+                status_code=410,
+            )
         return TEMPLATES.TemplateResponse(
             request,
             "missing.html",

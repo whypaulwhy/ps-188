@@ -158,6 +158,52 @@ class ReviewRecord(Base):
     """When the officer decided."""
 
 
+class DestructionRow(Base):
+    """The tombstone left when retention destroys a case.
+
+    The `CaseRecord` row is gone; this says that it was destroyed lawfully,
+    when, and under which window. The `LedgerLeaf` rows for that case stay
+    untouched, so the log still proves a decision was made at a time — see
+    ADR 0006 for why it can no longer prove what the decision was.
+
+    Deliberately carries no decision and no verdict. If it did, the outcome for
+    a traveller would outlive the retention window that was meant to end it.
+
+    Named `DestructionRow` rather than `DestructionRecord` so that the storage
+    row and the contract it serialises never shadow one another at a call site.
+    """
+
+    __tablename__ = "destruction_record"
+
+    case_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    """Which case was destroyed. Matches the `case_id` on its ledger leaves."""
+
+    checkpoint_id: Mapped[str] = mapped_column(String(64))
+    """Which crossing point held it."""
+
+    category: Mapped[str] = mapped_column(String(32))
+    """The retention category whose window expired."""
+
+    window_seconds: Mapped[int] = mapped_column(Integer)
+    """The window applied, in whole seconds.
+
+    Stored rather than looked up: a policy changed later must not be able to
+    make a past destruction look early or late.
+    """
+
+    original_created_at: Mapped[datetime.datetime] = mapped_column(UtcDateTime())
+    """When the destroyed record was written."""
+
+    destroyed_at: Mapped[datetime.datetime] = mapped_column(UtcDateTime())
+    """When it was destroyed."""
+
+    reviews_destroyed: Mapped[int] = mapped_column(Integer)
+    """How many officer reviews went with it. A count, never their content."""
+
+    destruction_json: Mapped[str] = mapped_column(Text)
+    """The full record, so it can be checked against its ledger entry."""
+
+
 def metadata() -> object:
     """Return the SQLAlchemy metadata for all tables.
 

@@ -29,6 +29,7 @@ from api.app import app_for
 from api.screening import Deployment, assemble
 from api.settings import NO_HASH_KEY, NO_LEDGER_KEY, Settings
 from core.privacy.hashing import DeploymentKey
+from core.privacy.retention import ArtefactCategory, RetentionPolicy
 from core.standards.verhoeff import verhoeff_digit
 from datagen.synthetic_docs import generate_specimen
 from db.recording import recent_cases
@@ -55,6 +56,16 @@ def settings(tmp_path: pathlib.Path, signing_key: Ed25519PrivateKey) -> Settings
         checkpoint_id=CHECKPOINT_ID,
         hash_key=DeploymentKey(b"k" * 32),
         ledger_key=signing_key,
+        retention_policy=RetentionPolicy(
+            windows={
+                ArtefactCategory.FACE_EMBEDDING: datetime.timedelta(days=7),
+                ArtefactCategory.PORTRAIT_CROP: datetime.timedelta(days=7),
+                ArtefactCategory.DOCUMENT_IMAGE: datetime.timedelta(days=14),
+                ArtefactCategory.EVIDENCE_EXHIBIT: datetime.timedelta(days=14),
+                ArtefactCategory.CASE_RECORD: datetime.timedelta(days=30),
+                ArtefactCategory.LEDGER_ENTRY: datetime.timedelta(days=3650),
+            }
+        ),
     )
 
 

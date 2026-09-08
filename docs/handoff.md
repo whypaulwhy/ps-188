@@ -70,7 +70,7 @@ changed since:
 ruff             All checks passed
 mypy --strict    no issues in 26 source files (core/ only, per CLAUDE.md)
 import-linter    5 contracts kept, 0 broken
-pytest           1456 passed
+pytest           1506 passed
 coverage         core/ 100.00% branch  (gate fails below 100)
 ```
 
@@ -231,13 +231,11 @@ likely scoped to the ICAO TD3 zone geometry only, where the standard is known.
 Decide the scope before writing it, and be willing to leave it unimplemented
 with a documented reason, as several other modules already are.
 
-**b. Retention enforcement.** `core/privacy/retention.py` decides what may be
-kept; nothing runs on a schedule to delete anything, so a deployment currently
-keeps everything. Needs a job that walks `case_record` by `created_at`, applies
-the policy, deletes, and **records that a deletion happened** — a deleted case
-whose ledger entry remains is the intended state (ADR 0006), and the officer
-console should say "this case's record has been destroyed under retention"
-rather than 404.
+**b. Retention enforcement. — DONE, phase 10.** `python -m api.retention_job`,
+with `--dry-run`. Tombstones in `destruction_record`, a 410 page in the console,
+and the destruction itself appended to the ledger. See `docs/roadmap.md` phase
+10 for the five decisions taken. What remains: retention sweeps `CASE_RECORD`
+only, because nothing yet stores an image, a crop or an embedding to sweep.
 
 **c. Checkpoint publication.** The system signs checkpoints on request; nothing
 carries them off the box. ADR 0003 is explicit that an unpublished checkpoint
@@ -277,7 +275,15 @@ The development machine is Windows 11, PowerShell primary, Bash tool available.
   `C:\Users\user\AppData\Local\Microsoft\WinGet\Packages\ezwinports.make_Microsoft.Winget.Source_8wekyb3d8bbwe\bin`.
   Prepend that to `PATH` in the Bash tool, or run the four steps by hand.
 - **PowerShell has no `&&`.** Use `;` or `if ($?) { }`. Commands given to the
-  user in a `bash` fence will fail if pasted into PowerShell.
+  user in a `bash` fence **will fail** if pasted into PowerShell. This has now
+  wasted the owner's time twice; give PowerShell syntax, one command per line.
+- **`pathlib.Path.write_text()` defaults to cp1252 on this machine**, not UTF-8.
+  A patch script that inserts an em dash writes an invalid byte and the module
+  stops importing. Always pass `encoding="utf-8"` to both `read_text` and
+  `write_text`.
+- **The API does not create its schema.** `uv run alembic upgrade head` first,
+  or `/health` throws `no such table: case_record`.
+- **The console case URL is `/console/case/<id>`**, singular.
 - **Bash heredocs mangle escapes** (`\t` in `\tesseract.exe`, `\s`, `\d`) and
   break on apostrophes. Use the Write tool for Python files, or write a script
   to the scratchpad and run it. This has bitten repeatedly.
@@ -319,11 +325,11 @@ git -C "D:/ps 188" status --short && git -C "D:/ps 188" log --oneline -3
 cd "D:/ps 188" && uv run ruff check . && uv run mypy --strict core && uv run lint-imports && uv run pytest -q
 ```
 
-Then pick from §6.2 — **retention enforcement (b)** is the strongest candidate:
-it is unblocked, it closes a real privacy gap that is currently "decided but not
-enforced", it touches code that already exists rather than inventing a subsystem,
-and it has a clean, testable exit criterion. **Checkpoint publication (c)** is
-the next best, and is small.
+Then pick from §6.2. Retention enforcement (b) is done. **Checkpoint
+publication (c)** is now the strongest candidate: unblocked, small, and ADR 0003
+is explicit that an unpublished checkpoint proves nothing. After that, the
+console has **no upload form** — the only way to submit a document is the API,
+which blocks any demo driven from a phone.
 
 ---
 
