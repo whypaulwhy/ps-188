@@ -740,3 +740,53 @@ It does not add a real issuer. Nobody has yet supplied a genuine DigiLocker or
 UIDAI certificate, so the only anchors that exist are generated in tests. The
 machinery is ready; the trust decision is a human one, and the anchors file is
 where somebody makes it deliberately and on the record.
+
+
+---
+
+## Phase 13 — Checkpoint publication
+
+The last of the three gaps phase 9 named. The system signed checkpoints on
+request and nothing carried them off the box, which ADR 0003 says makes them
+worth nothing: whoever holds the database can recompute the whole Merkle chain,
+so a root this system shows you is a number it chose.
+
+- `api/publish_checkpoint.py`: `python -m api.publish_checkpoint --out DIR`.
+- `tools/verify_checkpoint.py`: the file a recipient runs.
+
+**The published file is self-describing.** It carries the public key, the
+checkpoint identity, the tree size, the root, the timestamp and the signature.
+A recipient needs nothing the operator holds — not the database, not this
+repository, not a key fetched from the operator's own server.
+
+**The verifier re-implements the byte layout rather than importing it.** A check
+that shares code with the thing it checks agrees with it by construction, so
+`tools/verify_checkpoint.py` builds the signed bytes itself and imports nothing
+from this project. `test_the_standalone_verifier_agrees_with_the_system` pins the
+two together, because independence is only useful if drift is caught: if that
+test ever fails, every checkpoint already in somebody else's hands is about to
+stop verifying.
+
+**Nothing is automated, deliberately.** `CLAUDE.md` forbids cloud services, and
+a checkpoint uploaded to storage the operator controls has not left the
+operator's control. The command writes a file. Carrying it to a second
+organisation is a procedure, and the procedure belongs to the deployment.
+
+### What a series shows, and what it does not
+
+Given several checkpoints, the verifier reports whether the log only ever grew,
+and names the two ways it can fail: a tree that shrank, and a tree that stayed
+the same size with a different root — entries removed, and history rewritten.
+
+**This is deliberately described as weaker than it looks.** It is not an RFC 6962
+consistency proof, which this version does not produce: `ledger/hashchain.py` has
+`inclusion_proof` and no `consistency_proof`. A growing series is *consistent
+with* an append-only log and is not proof of one. The verifier says so in those
+words rather than implying more, and a consistency proof is the obvious next
+piece of work on the ledger.
+
+**Exit criteria.** A checkpoint is written to a file; the standalone verifier
+accepts a real one and rejects a changed root, a changed entry count, an unknown
+format and an incomplete file; a series that shrinks or is rewritten is reported.
+Publishing without a signing key is refused with exit 2 and writes nothing,
+because an unsigned substitute would look like proof.

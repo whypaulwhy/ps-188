@@ -70,7 +70,7 @@ changed since:
 ruff             All checks passed
 mypy --strict    no issues in 26 source files (core/ only, per CLAUDE.md)
 import-linter    5 contracts kept, 0 broken
-pytest           1546 passed
+pytest           1566 passed
 coverage         core/ 100.00% branch  (gate fails below 100)
 ```
 
@@ -326,9 +326,15 @@ cd "D:/ps 188" && uv run ruff check . && uv run mypy --strict core && uv run lin
 ```
 
 Then pick from §6.2. Done since: retention enforcement (b, phase 10), the
-console upload form (phase 11), trust anchor configuration (phase 12).
-**Checkpoint publication (c)** is now the strongest candidate: unblocked, small,
-and ADR 0003 is explicit that an unpublished checkpoint proves nothing.
+console upload form (phase 11), trust anchor configuration (phase 12),
+checkpoint publication (c, phase 13). **Every unblocked item in §6.2 is now
+finished** except authentication (d), which needs the deployment answer in
+§6.1.6, and `core/trust/aggregation.py` (e), which is a ten-minute decision
+about whether to delete a dead stub.
+
+The next real code work is a **consistency proof** in `ledger/hashchain.py`.
+Phase 13 publishes checkpoints and the verifier can only check that a series
+grew, which it honestly reports as weaker than a proof.
 
 **The highest-value thing overall is still not code**: a real issuer certificate
 (DigiLocker or UIDAI). Phase 12 built the way to install one; nobody has supplied
