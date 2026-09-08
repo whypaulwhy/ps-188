@@ -12,6 +12,7 @@ last tests here put markup into a stored verdict and check it arrives as text.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import pathlib
 from collections.abc import Iterator
@@ -25,6 +26,7 @@ from core.contracts import Decision, Evidence, Result, Rung, Verdict
 from core.privacy.retention import ArtefactCategory, RetentionPolicy
 from core.standards.verhoeff import verhoeff_digit
 from core.trust.ladder import resolve
+from datagen.synthetic_docs import generate_specimen
 from db.recording import load_case, record_screening
 from db.retention import sweep
 from db.session import create_session_factory
@@ -150,6 +152,108 @@ def test_an_unknown_case_says_what_that_means(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert "not the same as the case having been cleared" in response.text
+
+
+SPECIMEN = generate_specimen(seed=20260908).png
+"""A real rendered document, so the upload path is exercised on a real image."""
+
+
+def test_the_queue_offers_a_way_to_submit_a_document(client: TestClient) -> None:
+    """Without a link here the only intake is the API, which no officer can use."""
+    assert "/console/submit" in client.get("/console/").text
+
+
+def test_the_submit_form_renders(client: TestClient) -> None:
+    """A file input and a multipart form, or a phone cannot send a photograph."""
+    text = client.get("/console/submit").text
+
+    assert 'type="file"' in text
+    assert 'enctype="multipart/form-data"' in text
+
+
+def test_the_submit_form_says_what_will_not_be_checked(client: TestClient) -> None:
+    """Before the officer submits, while somebody is still holding the document."""
+    assert NO_LEDGER_KEY in client.get("/console/submit").text
+
+
+def test_submitting_a_capture_opens_a_case(client: TestClient) -> None:
+    """The criterion: a document goes in from a browser and a case comes out."""
+    response = client.post(
+        "/console/submit",
+        files={"capture": ("document.png", SPECIMEN, "image/png")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    location = response.headers["location"]
+    assert "/console/case/" in location
+
+    case_page = client.get(location)
+    assert case_page.status_code == 200
+    assert "not checked" in without_styles(case_page.text).lower()
+
+
+def test_an_unreadable_capture_still_opens_a_case(client: TestClient) -> None:
+    """A border that drops malformed input has a gap where someone would push."""
+    response = client.post(
+        "/console/submit",
+        files={"capture": ("not-an-image.png", b"nonsense", "image/png")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert client.get(response.headers["location"]).status_code == 200
+
+
+def test_submitting_nothing_is_refused_with_something_to_do(client: TestClient) -> None:
+    """An error must say what to fix, not that the request was bad."""
+    response = client.post(
+        "/console/submit",
+        files={"capture": ("", b"", "image/png")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 422
+    assert "Choose a photograph" in response.text
+
+
+def test_an_oversized_capture_is_refused_before_screening(settings: Settings) -> None:
+    """The limit is the deployment's, and the refusal explains what to do."""
+    small = dataclasses.replace(settings, max_upload_bytes=10)
+    with TestClient(app_for(small, create=True)) as constrained:
+        response = constrained.post(
+            "/console/submit",
+            files={"capture": ("document.png", SPECIMEN, "image/png")},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 422
+    assert "larger than this checkpoint accepts" in response.text
+
+
+def test_an_unknown_declared_type_does_not_fail_the_screening(client: TestClient) -> None:
+    """A claim is a claim. A nonsense one is recorded as unrecognised, not refused."""
+    response = client.post(
+        "/console/submit",
+        files={"capture": ("document.png", SPECIMEN, "image/png")},
+        data={"declared_type": "NOT_A_REAL_TYPE"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+
+def test_the_console_reaches_no_forbidden_package() -> None:
+    """Rule 5, checked at the console rather than only across the repository.
+
+    The upload form needs screening, and screening lives in `api`, `detectors`
+    and `extraction`. It gets there through a duck-typed context rather than an
+    import, and this is what says so.
+    """
+    source = pathlib.Path("ui/console.py").read_text(encoding="utf-8")
+
+    for forbidden in ("import api", "from api", "import detectors", "from detectors"):
+        assert forbidden not in source, f"ui/console.py reaches for {forbidden!r}"
 
 
 def sweep_everything(settings: Settings) -> None:

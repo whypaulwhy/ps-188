@@ -21,7 +21,6 @@ would be worse than returning nothing:
 from __future__ import annotations
 
 import datetime
-import hashlib
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import PlainTextResponse
@@ -29,6 +28,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api.deps import Context, get_context, get_session, new_case_id
+from api.intake import record_capture
 from api.schemas import (
     CheckpointOut,
     HealthOut,
@@ -37,12 +37,11 @@ from api.schemas import (
     ScreeningOut,
     screening_out,
 )
-from api.screening import assemble, screen
-from core.contracts import DocumentType, OfficerReview, Provenance
+from api.screening import assemble
+from core.contracts import DocumentType, OfficerReview
 from db.guards import RawIdentifierError
 from db.models import CaseRecord, LedgerLeaf
 from db.recording import RecordingError, load_case, load_log, recent_cases, record_review
-from db.recording import record_screening as store_screening
 from explain.renderer import render_verdict
 from ledger.hashchain import verify_checkpoint
 
@@ -107,30 +106,16 @@ async def submit_screening(
 
     now = _now()
     case_id = new_case_id(now=now)
-    provenance = Provenance(
-        source_id=case_id,
-        sha256=hashlib.sha256(payload).hexdigest(),
-        media_type=capture.content_type or "application/octet-stream",
-        byte_size=len(payload),
-        captured_at=now,
-        received_at=now,
-        checkpoint_id=context.settings.checkpoint_id,
-    )
-
-    subject, verdict = screen(
-        payload,
-        provenance=provenance,
-        deployment=context.deployment,
-        decided_at=now,
-        declared_type=document_type,
-    )
     try:
-        store_screening(
+        taken = record_capture(
             session,
+            payload,
             case_id=case_id,
-            verdict=verdict,
-            checkpoint_id=context.settings.checkpoint_id,
-            recorded_at=now,
+            settings=context.settings,
+            deployment=context.deployment,
+            now=now,
+            media_type=capture.content_type,
+            declared_type=document_type,
         )
     except RecordingError as error:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(error)) from error
@@ -139,7 +124,7 @@ async def submit_screening(
     if view is None:  # pragma: no cover - the write above just succeeded
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "the case was not stored")
     return screening_out(
-        view, report=render_verdict(view.verdict), not_extracted=subject.not_extracted
+        view, report=render_verdict(view.verdict), not_extracted=taken.subject.not_extracted
     )
 
 

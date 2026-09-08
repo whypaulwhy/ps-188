@@ -644,3 +644,44 @@ checkpoint.
   windows and nothing sweeps them, because nothing yet stores a document image,
   a portrait crop or an embedding to sweep. When something does, it goes here.
 - Checkpoint publication and authentication, both still open from phase 9.
+
+
+---
+
+## Phase 11 — The console's front door
+
+Phase 9 built an officer console that could read cases and record decisions, and
+no way to create one. The only intake was `POST /screenings`, which means curl or
+Postman. An officer at a checkpoint cannot use either, and neither can a demo
+driven from a phone.
+
+- `api/intake.py`: `record_capture`, the one intake path.
+- `api.deps.Context.screen_capture`: the seam the console calls.
+- `ui/console.py`: `GET` and `POST /console/submit`.
+- `ui/templates/submit.html`, and a link from the queue.
+
+**The interesting constraint.** Rule 5 forbids `ui` from importing `api`,
+`detectors` or `extraction`, and screening lives in all three. The console
+therefore does not screen anything: it calls a method on the duck-typed context
+it already holds, and the API decides what that method does. `ui/console.py` has
+a comment from phase 9 explaining that the context is loosely typed precisely so
+that the package which renders records does not depend on the package that
+produces them; this is the first time that decision paid for itself. A test
+greps the console's source for a forbidden import, so the seam cannot quietly
+close.
+
+**Both intake paths are now the same code.** `record_capture` was extracted from
+the JSON route rather than written beside it. Two intake paths that drifted would
+mean the same document screened from the console and over HTTP could produce
+different records, which is the kind of difference nobody notices until an audit.
+
+**What the form does not do.** It does not resize, rotate, enhance or re-encode
+the photograph. The bytes screened are the bytes the camera produced, because the
+provenance digest has to be of something that exists, and a document the system
+quietly improved is not the document that was presented.
+
+**On using it from a phone.** The form carries `capture="environment"`, so a
+phone opens the rear camera directly. Reaching it from a phone means binding the
+server to the local network, and there is still no authentication — that pairing
+is a demonstration setting, not a deployment. `deploy/compose.yaml` continues to
+bind to localhost.

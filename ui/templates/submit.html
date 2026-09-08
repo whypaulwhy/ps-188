@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Screen a document - SENTINEL ID{% endblock %}
+
+{% block main %}
+<h1>Screen a document</h1>
+
+{% if error %}
+<div class="card missing"><strong>{{ error }}</strong></div>
+{% endif %}
+
+{% if unavailable %}
+{# Said before the officer submits, not after. A check that will not run is
+   worth knowing about while there is still a person holding the document. #}
+<div class="card missing">
+  <strong>Some checks will not run at this checkpoint.</strong>
+  <ul>{% for line in unavailable %}<li>{{ line }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form method="post" action="{{ base }}/submit" enctype="multipart/form-data">
+  <p>
+    <label for="capture">Photograph or file of the document</label><br>
+    <input type="file" id="capture" name="capture"
+           accept="image/*,application/pdf" capture="environment" required>
+  </p>
+  <p class="rule">
+    On a phone this opens the camera. Photograph the whole document, flat and in
+    focus, with the machine-readable strip along the bottom fully in frame. A
+    strip that cannot be read is reported as unread rather than guessed at, so a
+    poor photograph produces a case that says so.
+  </p>
+
+  <p>
+    <label for="declared_type">What the document claims to be</label><br>
+    <select id="declared_type" name="declared_type">
+      {% for kind in types %}
+      <option value="{{ kind }}">{{ kind.replace("_", " ") }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p class="rule">
+    This is what the bearer presents it as, not a finding. It is recorded as a
+    claim and never treated as established.
+  </p>
+
+  <button type="submit">Screen this document</button>
+</form>
+
+<h2>What happens next</h2>
+<div class="card">
+  <p class="rule">
+    The document is screened and a case is opened whichever way it goes,
+    including if the file cannot be read at all. Nothing is discarded and no
+    result is withheld. You will be taken straight to the case, which states
+    the decision and everything that could not be checked.
+  </p>
+</div>
+
+<p><a href="{{ base }}/">Back to the queue</a></p>
+{% endblock %}

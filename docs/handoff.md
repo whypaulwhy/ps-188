@@ -70,7 +70,7 @@ changed since:
 ruff             All checks passed
 mypy --strict    no issues in 26 source files (core/ only, per CLAUDE.md)
 import-linter    5 contracts kept, 0 broken
-pytest           1506 passed
+pytest           1518 passed
 coverage         core/ 100.00% branch  (gate fails below 100)
 ```
 
@@ -325,11 +325,10 @@ git -C "D:/ps 188" status --short && git -C "D:/ps 188" log --oneline -3
 cd "D:/ps 188" && uv run ruff check . && uv run mypy --strict core && uv run lint-imports && uv run pytest -q
 ```
 
-Then pick from §6.2. Retention enforcement (b) is done. **Checkpoint
-publication (c)** is now the strongest candidate: unblocked, small, and ADR 0003
-is explicit that an unpublished checkpoint proves nothing. After that, the
-console has **no upload form** — the only way to submit a document is the API,
-which blocks any demo driven from a phone.
+Then pick from §6.2. Retention enforcement (b) is done, and so is the console
+upload form (phase 11). **Checkpoint publication (c)** is now the strongest
+candidate: unblocked, small, and ADR 0003 is explicit that an unpublished
+checkpoint proves nothing.
 
 ---
 

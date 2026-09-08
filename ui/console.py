@@ -31,7 +31,7 @@ from starlette.responses import RedirectResponse, Response
 from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 
-from core.contracts import Decision, OfficerReview
+from core.contracts import Decision, DocumentType, OfficerReview
 from db.guards import RawIdentifierError
 from db.recording import (
     RecordingError,
@@ -44,6 +44,13 @@ from explain.renderer import render_verdict
 
 TEMPLATES = Jinja2Templates(directory=str(pathlib.Path(__file__).parent / "templates"))
 """Autoescaping is Jinja2's default for `.html`, and nothing here turns it off."""
+
+NO_CAPTURE_CHOSEN = "Choose a photograph or a file of the document before submitting."
+
+CAPTURE_TOO_LARGE = (
+    "That file is larger than this checkpoint accepts. Photograph the document "
+    "again at a lower resolution, or use the original file rather than a scan of it."
+)
 
 NOTE_HOLDS_A_NUMBER = (
     "That note appears to contain a document number. Please remove it and describe "
@@ -185,6 +192,67 @@ async def review(request: Request) -> Response:
     return RedirectResponse(f"{_base(request)}/case/{case_id}", status_code=303)
 
 
+async def submit_form(request: Request) -> Response:
+    """Show the form an officer uses to put a document in front of the system."""
+    return _submit_page(request)
+
+
+def _submit_page(request: Request, *, error: str | None = None) -> Response:
+    """Render the upload form, optionally with something to fix."""
+    return TEMPLATES.TemplateResponse(
+        request,
+        "submit.html",
+        {
+            "base": _base(request),
+            "error": error,
+            "types": [kind.value for kind in DocumentType],
+            "unavailable": _context_of(request).settings.unavailable(),
+        },
+        status_code=200 if error is None else 422,
+    )
+
+
+async def submit(request: Request) -> Response:
+    """Accept one uploaded capture, screen it, and go to the case it produced.
+
+    A redirect afterwards rather than a rendered page, for the same reason the
+    review form redirects: a refresh must not screen the document a second time
+    and open a second case for one crossing.
+    """
+    context = _context_of(request)
+    form = await request.form()
+    upload = form.get("capture")
+
+    if not hasattr(upload, "read"):
+        return _submit_page(request, error=NO_CAPTURE_CHOSEN)
+
+    captured = await upload.read()  # type: ignore[union-attr]
+    if not captured:
+        return _submit_page(request, error=NO_CAPTURE_CHOSEN)
+    if len(captured) > context.settings.max_upload_bytes:
+        return _submit_page(request, error=CAPTURE_TOO_LARGE)
+
+    declared = str(form.get("declared_type") or DocumentType.UNRECOGNISED.value)
+    try:
+        document_type = DocumentType(declared)
+    except ValueError:
+        document_type = DocumentType.UNRECOGNISED
+
+    with context.session_factory() as session:
+        try:
+            taken = context.screen_capture(
+                session,
+                captured,
+                now=datetime.datetime.now(datetime.UTC),
+                media_type=getattr(upload, "content_type", None),
+                declared_type=document_type,
+            )
+        except RecordingError as error:
+            return _submit_page(request, error=str(error))
+
+    return RedirectResponse(f"{_base(request)}/case/{taken.case_id}", status_code=303)
+
+
 def build_console(context: Any) -> Starlette:  # noqa: ANN401 - api.deps.Context
     """Return the officer console as a mountable application.
 
@@ -199,6 +267,8 @@ def build_console(context: Any) -> Starlette:  # noqa: ANN401 - api.deps.Context
     console = Starlette(
         routes=[
             Route("/", queue, name="queue"),
+            Route("/submit", submit_form, name="submit_form"),
+            Route("/submit", submit, methods=["POST"], name="submit"),
             Route("/case/{case_id}", case, name="case"),
             Route("/case/{case_id}/review", review, methods=["POST"], name="review"),
         ]

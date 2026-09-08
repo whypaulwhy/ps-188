@@ -21,8 +21,10 @@ from typing import Final
 from fastapi import Request
 from sqlalchemy.orm import Session, sessionmaker
 
+from api.intake import Intake, record_capture
 from api.screening import Deployment
 from api.settings import Settings
+from core.contracts import DocumentType
 from db.session import create_session_factory
 
 CASE_ID_BYTES: Final[int] = 5
@@ -41,6 +43,47 @@ class Context:
     settings: Settings
     deployment: Deployment
     session_factory: sessionmaker[Session]
+
+    def screen_capture(
+        self,
+        session: Session,
+        captured: bytes,
+        *,
+        now: datetime.datetime,
+        media_type: str | None = None,
+        declared_type: DocumentType = DocumentType.UNRECOGNISED,
+    ) -> Intake:
+        """Screen one capture and record it, allocating the case identifier.
+
+        This exists so the officer console can accept an upload without
+        importing anything from `api`, `detectors` or `extraction` — an
+        import-linter contract forbids it, and the console is written against a
+        duck-typed context for exactly this reason. The console calls this; it
+        does not know what is behind it.
+
+        Args:
+            session: An open session. The write is committed.
+            captured: The document exactly as received.
+            now: One clock read, shared by every record of this case.
+            media_type: What the browser said the file was.
+            declared_type: What the document claims to be, when known.
+
+        Returns:
+            The case identifier, the subject and the verdict.
+
+        Raises:
+            RecordingError: If the case could not be written.
+        """
+        return record_capture(
+            session,
+            captured,
+            case_id=new_case_id(now=now),
+            settings=self.settings,
+            deployment=self.deployment,
+            now=now,
+            media_type=media_type,
+            declared_type=declared_type,
+        )
 
 
 def build_context(settings: Settings, *, create: bool = False) -> Context:
