@@ -1,0 +1,18 @@
+[
+  {
+    "detector_id": "rung0.signed_qr",
+    "rung": 0,
+    "result": "PROOF_VALID",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "The code on this document carries a signature from utopia-registry, and it is genuine.",
+      "This is the strongest thing this system can establish about a document: the authority that issued it signed exactly these details."
+    ],
+    "standard_ref": "SENTINEL ID signed identity code, container SENTINELID-SQR1 (RFC 4648 s.5 base64url, detached signature over the decoded payload)",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "d68d7864c815d7925b53dd92260fc5bc82807d7e1e7983a4817a1447c73f2f67"
+  }
+]

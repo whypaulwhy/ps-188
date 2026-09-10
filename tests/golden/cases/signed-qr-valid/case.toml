@@ -1,0 +1,18 @@
+# Golden case: signed-qr-valid
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "signed-qr-valid"
+description = "A card whose issuing authority signature verifies against a pinned anchor."
+detector = "rung0.signed_qr"
+declared_type = "UNRECOGNISED"
+phase = 16
+input = "input.qr.txt"
+anchors = ["utopia-registry.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "Signed on 2026-09-10 with an ephemeral RSA-2048 key that was not retained. The issuer certificate is committed at tests/golden/anchors/utopia-registry.der."
+sha256 = "d68d7864c815d7925b53dd92260fc5bc82807d7e1e7983a4817a1447c73f2f67"

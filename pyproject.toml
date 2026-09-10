@@ -24,6 +24,7 @@ dependencies = [
     "pyzbar>=0.1.9",
     "rapidocr-onnxruntime>=1.4.4",
     "scikit-image>=0.26.0",
+    "segno>=1.6.6",
     "signxml>=5.1.0",
     "sqlalchemy>=2.0.52",
     "uvicorn>=0.52.4",

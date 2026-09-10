@@ -1,0 +1,18 @@
+# Golden case: signed-qr-unknown-issuer
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "signed-qr-unknown-issuer"
+description = "A genuinely signed card from an authority this checkpoint does not know."
+detector = "rung0.signed_qr"
+declared_type = "UNRECOGNISED"
+phase = 16
+input = "input.qr.txt"
+anchors = []
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "The payload and signature of signed-qr-valid, naming an issuer no anchor covers. Not holding a key is not a finding of forgery."
+sha256 = "a22bf70b9f4a056313ccd8252a41da559a7285ccaa1e31b19dc012943f272291"

@@ -1,0 +1,17 @@
+[
+  {
+    "detector_id": "rung0.signed_qr",
+    "rung": 0,
+    "result": "NO_PROOF_PRESENT",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "This deployment does not hold the issuing authority's key, so the signature on this document could not be checked."
+    ],
+    "standard_ref": "SENTINEL ID signed identity code, container SENTINELID-SQR1 (RFC 4648 s.5 base64url, detached signature over the decoded payload)",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "a22bf70b9f4a056313ccd8252a41da559a7285ccaa1e31b19dc012943f272291"
+  }
+]

@@ -1,0 +1,18 @@
+# Golden case: signed-qr-tampered
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it when screened against the anchors listed below.
+
+[case]
+id = "signed-qr-tampered"
+description = "The same card with the holder's name changed after it was signed."
+detector = "rung0.signed_qr"
+declared_type = "UNRECOGNISED"
+phase = 16
+input = "input.qr.txt"
+anchors = ["utopia-registry.der"]
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no real issuer signature."
+provenance = "The payload of signed-qr-valid with the holder's name replaced, carrying the original signature. This is the case the whole rung exists to catch."
+sha256 = "806cb58a16fca42b114d2dd0fbaf88ca27666fa7e3abecbddaf8be89af32ca04"

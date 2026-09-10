@@ -926,3 +926,75 @@ set in OCR-B, so it reads cleanly.
 a well-formed one passes without claiming the card is genuine; nothing the
 detector reads reaches the evidence in the clear; and a document not declared as
 an Aadhaar card is never judged by this rule.
+
+
+---
+
+## Phase 16 slice C — a card that can actually be cleared
+
+Slice A gave a red verdict on an invented number. This is the green one: a
+specimen card an issuing authority signed, and a Rung 0 detector that checks it,
+so the path from a photograph to a cryptographic clearance exists rather than
+being described.
+
+- `detectors/rung0_crypto/signed_qr.py`, Rung 0, assembled into every screening.
+- `datagen/signed_card.py`, a specimen for the same fictional state the rest of
+  `datagen` issues for.
+- Golden cases `signed-qr-valid`, `signed-qr-tampered`, `signed-qr-unknown-issuer`.
+- `segno` added: a pure-Python QR encoder with no transitive dependencies. None
+  of the things CLAUDE.md forbids without an ADR.
+
+**This is not the Aadhaar Secure QR format**, and does not pretend to be. That
+detector is still a stub and stays one until a real specimen exists to check a
+parser against. What this reads is a container defined by this project, for an
+issuer that adopts it. The cryptography is genuine — a real ECDSA signature over
+exact bytes, checked through the same `verification.py` every Rung 0 detector
+uses — but a format we define and then parse is, in that narrow sense, code
+agreeing with itself. The value is the surrounding machinery, which is format
+independent: anchors, validity windows, algorithm allowlists, the ladder.
+
+Verified end to end from a rendered card, not asserted:
+
+| | |
+|---|---|
+| genuine card, anchor installed | `CLEARED` |
+| genuine card, no anchor | `MANUAL_REVIEW` |
+| card edited after signing | `REJECTED` |
+| anchor that forbids the algorithm | `MANUAL_REVIEW` |
+
+### Three things this slice found
+
+**A golden case can be silently skipped.** `test_the_detector_reproduces_the_golden`
+skips when a detector is absent from the `BUILDERS` map, which is how a case
+stays pending before its detector exists. Slice A's Aadhaar cases were reported
+as passing when only their digest and legality checks had run; the exact-Evidence
+comparison had never executed. Both detectors are now registered and the corpus
+runs with **no skips at all**.
+
+**ECDSA rather than RSA, because of the camera.** An RSA-2048 signature is 256
+bytes, which pushes the container past 660 characters and the QR to version 20 —
+105 modules that must fit on a card. The first version pasted a 630px symbol onto
+a 638px card at a negative offset, where it was clipped, decoded to nothing, and
+made every card come back unread. A P-256 signature is about 70 bytes, so the
+same card carries a version 13 symbol with wider modules. The scale is now
+computed from the symbol rather than assumed.
+
+**The tamper detector is sensitive to how evenly a document is printed.** The
+first card saturated `tamper_classical` at 1.0 and was escalated. It was not the
+QR — removing it changed nothing — and it was not a shortage of textured blocks;
+the card had proportionally more than the evaluation corpus. The signal is error
+level *localisation*, the ratio of the worst blocks to the typical one, and a
+document mixing large flat areas with sharp graphics has an uneven ratio without
+having been tampered with at all: 3.11 against the corpus's 1.75, and the score
+saturates above 3.0.
+
+Giving the card the guilloche and microprint a real identity document carries
+brought it to 0.137, below the corpus itself. So the sparse first draft was the
+unrealistic thing rather than the detector being broken.
+
+**The limitation is real and is recorded here rather than closed.** Every
+specimen in `datagen` is uniformly printed, so `eval/reports/` has never measured
+a document with large flat areas or mixed content — and its "0% false escalation
+on genuine documents" is narrower than it sounds. A genuine document that is
+sparsely printed would be escalated. Covering that means new specimens in the
+evaluation corpus, which is a change to the data rather than to the detector.

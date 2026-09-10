@@ -37,7 +37,7 @@ from core.contracts import (
 )
 from core.trust.ladder import resolve
 from detectors.base import Detector
-from detectors.rung0_crypto import digilocker_xml_sig, pdf_pkcs7
+from detectors.rung0_crypto import digilocker_xml_sig, pdf_pkcs7, signed_qr
 from detectors.rung0_crypto.trust_store import TrustStore
 from detectors.rung1_deterministic import (
     aadhaar_number,
@@ -110,6 +110,7 @@ def assemble(deployment: Deployment) -> tuple[Detector, ...]:
     detectors: list[Detector] = [
         digilocker_xml_sig.build(deployment.trust_store),
         pdf_pkcs7.build(deployment.trust_store),
+        signed_qr.build(deployment.trust_store),
         mrz_checkdigits.build(),
         expiry.build(),
         aadhaar_number.build(),

@@ -15,8 +15,8 @@ import pytest
 
 from core.contracts import Evidence, Result, Rung
 from detectors import Detector
-from detectors.rung0_crypto import digilocker_xml_sig, pdf_pkcs7
-from detectors.rung1_deterministic import expiry, mrz_checkdigits
+from detectors.rung0_crypto import digilocker_xml_sig, pdf_pkcs7, signed_qr
+from detectors.rung1_deterministic import aadhaar_number, expiry, mrz_checkdigits
 from tests.golden.harness import (
     JARGON,
     GoldenCase,
@@ -28,8 +28,10 @@ from tests.golden.harness import (
 BUILDERS: dict[str, Callable[[GoldenCase], Detector]] = {
     "rung0.digilocker_xml_sig": lambda case: digilocker_xml_sig.build(case.trust_store()),
     "rung0.pdf_pkcs7": lambda case: pdf_pkcs7.build(case.trust_store()),
+    "rung0.signed_qr": lambda case: signed_qr.build(case.trust_store()),
     "rung1.mrz_checkdigits": lambda _case: mrz_checkdigits.build(),
     "rung1.expiry": lambda _case: expiry.build(),
+    "rung1.aadhaar_number": lambda _case: aadhaar_number.build(),
 }
 """How to construct each implemented detector. A detector absent here is pending."""
 

@@ -33,6 +33,7 @@ from cryptography import x509
 
 from core.contracts import (
     Artefact,
+    DecodedCode,
     DocumentType,
     Evidence,
     Provenance,
@@ -137,7 +138,14 @@ class GoldenCase:
         suffixes = "".join(self.input_path.suffixes)
 
         zones: tuple[TextZone, ...] = ()
-        if suffixes.endswith(".mrz.txt"):
+        codes: tuple[DecodedCode, ...] = ()
+        if suffixes.endswith(".qr.txt"):
+            # The bytes a code reader would hand over, verbatim. Signature
+            # verification depends on them exactly, so the fixture holds the
+            # payload and nothing here re-encodes or normalises it.
+            media_type = "text/plain"
+            codes = (DecodedCode(symbology="QR", payload=data.strip()),)
+        elif suffixes.endswith(".mrz.txt"):
             media_type = "text/plain"
             zones = (
                 TextZone(
@@ -175,6 +183,7 @@ class GoldenCase:
                 Artefact(role="document_front", media_type=media_type, sha256=digest, data=data),
             ),
             zones=zones,
+            codes=codes,
         )
 
 
