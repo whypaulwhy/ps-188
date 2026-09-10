@@ -102,6 +102,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "api.settings",
         "detectors.rung1_deterministic.aadhaar_number",
         "detectors.rung0_crypto.signed_qr",
+        "detectors.rung2_inference.face_engine",
         "api.intake",
         "api.trust",
         "api.publish_checkpoint",

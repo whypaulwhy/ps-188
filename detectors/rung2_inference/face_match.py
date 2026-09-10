@@ -9,39 +9,50 @@ between the portrait and the bearer notices, and that comparison is inference.
 rejects one. `score` is suspicion — a larger number means the faces look *less*
 alike — so it can only move a case toward a human.
 
-**It currently reports `INCONCLUSIVE` on every document**, for two reasons, and
-the second is the harder one:
+**The threshold here is not calibrated, and that is stated rather than hidden.**
+`SUSPICION_THRESHOLD` is a placeholder. Calibrating it needs a corpus of real
+faces, and obtaining one is a question of lawful basis and consent before it is
+a question of data — `docs/scope.md` records the constraint and phase 7 records
+why no synthetic faces are generated to stand in. No accuracy figure for this
+detector exists anywhere in this repository, and rule 2 of `CLAUDE.md` means
+none may be written until `eval/run_eval.py` produces one on a named dataset.
 
-1. There are no model weights here. InsightFace `buffalo_l` is a large download
-   and none is present, exactly as with TruFor.
-2. **There are no faces to compare.** `datagen` draws a flat placeholder panel
-   rather than a portrait, deliberately: producing images of people who do not
-   exist in order to test a border system is a line this project does not
-   cross. So even with weights, there is nothing here to validate against.
+What makes shipping an uncalibrated threshold defensible is the rung: the worst
+a badly chosen number can do here is send more cases to a person. It cannot
+clear anybody, and it cannot reject anybody.
 
-The second blocker is not solved by a download. Validating face matching needs a
-corpus of real faces, and obtaining one is a question of lawful basis and
-consent before it is a question of data. `docs/scope.md` records the constraint.
-
-**Nothing here treats an embedding as anonymous.** Any embedding this detector
-produces goes through :mod:`core.privacy.biometrics`, which encrypts it at rest
-under a key separate from the identifier hashing key and carries a retention
-window the code enforces. See rule 4 of CLAUDE.md.
+**Nothing here treats an embedding as anonymous.** An embedding is partially
+invertible by model inversion. This detector computes two, compares them, and
+drops them when the comparison ends: none is written to disk, put in the
+evidence, or persisted. Anything that *did* want to keep one would take it
+through :mod:`core.privacy.biometrics`, which encrypts it under a key separate
+from the identifier hashing key and carries a retention window the code
+enforces. See rule 4 of CLAUDE.md.
 """
 
 from __future__ import annotations
 
-import os
 import time
-from pathlib import Path
 from typing import Final
 
-from core.contracts import Evidence, Result, Rung, Subject, ZoneName
+from core.contracts import Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
+from detectors.rung2_inference import face_engine
 
-DETECTOR_VERSION: Final[str] = "face_match/unavailable"
-WEIGHTS_ENV: Final[str] = "SENTINELID_FACE_WEIGHTS"
+DETECTOR_VERSION: Final[str] = "face_match/1.0.0+buffalo_l"
 LIVE_CAPTURE_ROLE: Final[str] = "live_capture"
+DOCUMENT_ROLE: Final[str] = "document_front"
+
+SUSPICION_THRESHOLD: Final[float] = 0.55
+"""Above this the case is escalated. **Uncalibrated** — see the module docstring."""
+
+MINIMUM_CONFIDENCE: Final[float] = 0.5
+"""Below this the detector does not accept that it found a face at all.
+
+A low-confidence detection compared against anything produces a number, and a
+number that means nothing is worse here than no number, because it would be
+read as a comparison that happened.
+"""
 
 MODEL_UNAVAILABLE: Final[str] = (
     "The face comparison model is not installed at this checkpoint, so the "
@@ -52,19 +63,29 @@ NO_LIVE_CAPTURE: Final[str] = (
     "No photograph of the person presenting this document was taken, so there was "
     "nothing to compare the picture on it against."
 )
+NO_FACE_ON_DOCUMENT: Final[str] = (
+    "No photograph of a face could be found on this document, so there was nothing "
+    "to compare the person against. This is usually a problem with the scan."
+)
+NO_FACE_IN_CAPTURE: Final[str] = (
+    "No face could be found in the photograph of the person presenting this "
+    "document, so no comparison was made. Take the photograph again, with the "
+    "person facing the camera."
+)
 
 
-def weights_path() -> Path | None:
-    """Return the configured face model weights, or None if there are none.
+def suspicion(similarity: float) -> float:
+    """Turn a similarity into a suspicion score in [0, 1].
+
+    Args:
+        similarity: Cosine similarity of two face embeddings, in [-1, 1].
+            Higher means more alike.
 
     Returns:
-        The weights file, or None. None is this deployment's normal state.
+        Suspicion. A larger number means the faces look *less* alike, because
+        every Rung 2 score in this system points the same way: toward a human.
     """
-    configured = os.environ.get(WEIGHTS_ENV)
-    if not configured:
-        return None
-    candidate = Path(configured)
-    return candidate if candidate.is_file() else None
+    return min(1.0, max(0.0, (1.0 - similarity) / 2.0))
 
 
 @register
@@ -88,35 +109,71 @@ class FaceMatchDetector(Detector):
         """Compare the portrait with the live capture, or say why it could not."""
         started = time.perf_counter()
         digest = subject.artefacts[0].sha256 if subject.artefacts else subject.provenance.sha256
-
-        if weights_path() is None:
-            reason = MODEL_UNAVAILABLE
-        elif subject.artefact(LIVE_CAPTURE_ROLE) is None:
-            reason = NO_LIVE_CAPTURE
-        elif subject.zone(ZoneName.PORTRAIT) is None:
-            reason = (
-                "The photograph on this document could not be located, so it was "
-                "not compared with the person presenting it."
-            )
-        else:  # pragma: no cover - unreachable until weights and a face corpus exist
-            msg = (
-                "Face comparison is not written: no model weights and no lawfully "
-                "obtained face corpus have ever been available to develop it "
-                "against. See the module docstring."
-            )
-            raise NotImplementedError(msg)
-
+        result, score, reasons = self._examine(subject)
         return (
             Evidence(
                 detector_id=self.id,
                 rung=self.rung,
-                result=Result.INCONCLUSIVE,
-                reasons=(reason,),
+                result=result,
+                score=score,
+                uncertainty=None if score is None else 1.0,
+                reasons=reasons,
                 runtime_ms=(time.perf_counter() - started) * 1000,
                 model_version=DETECTOR_VERSION,
                 input_digest=digest,
             ),
         )
+
+    def _examine(self, subject: Subject) -> tuple[Result, float | None, tuple[str, ...]]:
+        """Decide the result, the score and the officer-facing reasons."""
+        if not face_engine.available():
+            return Result.INCONCLUSIVE, None, (MODEL_UNAVAILABLE,)
+
+        live = subject.artefact(LIVE_CAPTURE_ROLE)
+        if live is None:
+            return Result.INCONCLUSIVE, None, (NO_LIVE_CAPTURE,)
+
+        document = subject.artefact(DOCUMENT_ROLE)
+        if document is None:
+            return Result.INCONCLUSIVE, None, (NO_FACE_ON_DOCUMENT,)
+
+        on_document = self._best(document.data)
+        if on_document is None:
+            return Result.INCONCLUSIVE, None, (NO_FACE_ON_DOCUMENT,)
+
+        in_person = self._best(live.data)
+        if in_person is None:
+            return Result.INCONCLUSIVE, None, (NO_FACE_IN_CAPTURE,)
+
+        score = suspicion(face_engine.similarity(on_document, in_person))
+        if score >= SUSPICION_THRESHOLD:
+            return (
+                Result.SUSPICIOUS,
+                score,
+                (
+                    "The face of the person presenting this document does not look "
+                    "like the photograph on it.",
+                    "This is a machine's impression, not proof. Lighting, age and a "
+                    "poor photograph all cause it. A person should compare them.",
+                ),
+            )
+        return (
+            Result.NO_FINDING,
+            score,
+            (
+                "The face of the person presenting this document is consistent with "
+                "the photograph on it.",
+                "This is not proof that they are the same person, and it establishes "
+                "nothing about whether the document itself is genuine.",
+            ),
+        )
+
+    def _best(self, image: bytes) -> face_engine.DetectedFace | None:
+        """Return the largest confidently detected face in an image, if any."""
+        for face in face_engine.faces(image):
+            if face.confidence >= MINIMUM_CONFIDENCE:
+                return face
+        return None
 
 
 def build() -> Detector:

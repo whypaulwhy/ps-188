@@ -998,3 +998,70 @@ a document with large flat areas or mixed content — and its "0% false escalati
 on genuine documents" is narrower than it sounds. A genuine document that is
 sparsely printed would be escalated. Covering that means new specimens in the
 evaluation corpus, which is a change to the data rather than to the detector.
+
+
+---
+
+## Phase 17 — Face comparison and liveness
+
+Phase 7 built the privacy machinery for biometrics and left both detectors
+abstaining, blocked on two things: model weights, and the absence of any face to
+compare. The weights now exist. The second blocker has not moved and is not
+pretended to have.
+
+- `detectors/rung2_inference/face_engine.py`: loads InsightFace `buffalo_l`
+  through ONNX Runtime, once, shared by both detectors.
+- `face_match.py`: compares the document portrait with a live capture.
+- `pad_liveness.py`: a landmark-motion challenge across frames.
+- `tools/face_check.py`: point the models at your own images and see the numbers.
+
+**Both stay on Rung 2, so neither can clear anybody.** That is what makes the
+rest of this defensible.
+
+### Two uncalibrated thresholds, said out loud
+
+`face_match.SUSPICION_THRESHOLD` and `pad_liveness.STILLNESS_THRESHOLD` are
+placeholders. Calibrating either needs a corpus — of faces for one, of real
+presentation attacks for the other — and obtaining one is a question of lawful
+basis and consent before it is a question of data. No accuracy figure for either
+detector exists anywhere in this repository and rule 2 forbids writing one until
+`eval/run_eval.py` produces it on a named dataset.
+
+Shipping an uncalibrated threshold is defensible **only** because of the rung.
+The worst a badly chosen number can do here is send more cases to a person. It
+cannot clear anybody and it cannot reject anybody. On Rung 0 or Rung 1 the same
+choice would be indefensible.
+
+### What the liveness check actually is
+
+Not a trained anti-spoofing model, and it does not claim to be one. It is a
+challenge: several frames a moment apart, and the movement of the five facial
+landmarks between them, divided by the width of the face so that holding the
+camera closer does not read as movement.
+
+**It defeats a printed photograph held to a camera. It does not defeat a video
+replay**, and the officer wording says so in its own sentence, because somebody
+told "the liveness check passed" will otherwise read more into it than it can
+carry.
+
+**A single frame reports `INCONCLUSIVE`.** A still image of a still image is
+indistinguishable from a still image of a person, so there is nothing to measure
+and nothing is claimed.
+
+### Rule 4, inside the detector
+
+An embedding is partially invertible by model inversion. These detectors compute
+two, compare them, and drop them: none is written to disk, put into the evidence
+or persisted anywhere. `face_engine` has no code path that stores one. Anything
+that wanted to keep one would go through `core.privacy.biometrics`, which
+encrypts it under a key held separately from the identifier hashing key and
+carries a retention window the code enforces.
+
+### What is still not validated
+
+Whether any of this recognises an actual face. There are no faces in this
+repository to check it against, by decision rather than by oversight, so the
+tests cover contract compliance only — which is what `CLAUDE.md` asks of a Rung
+2 detector, and is all that can honestly be claimed. `tools/face_check.py` exists
+so that a person can point the models at images they are entitled to use and see
+the numbers for themselves.
