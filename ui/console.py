@@ -192,6 +192,31 @@ async def review(request: Request) -> Response:
     return RedirectResponse(f"{_base(request)}/case/{case_id}", status_code=303)
 
 
+async def capture(request: Request) -> Response:
+    """The phone-first capture page.
+
+    The one surface in this console that uses JavaScript, and the reason is
+    specific: a camera needs `getUserMedia` and a file input, and neither has a
+    server-rendered equivalent. It is vanilla, with no framework, no build step
+    and nothing fetched from a CDN, so the rest of the console's argument still
+    holds — a person at a checkpoint can open the file and change a label.
+
+    The page posts to the API from the browser. That is not an import, so the
+    contract keeping `ui` away from `api` is untouched.
+    """
+    context = _context_of(request)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "capture.html",
+        {
+            "base": _base(request),
+            "checkpoint_id": context.settings.checkpoint_id,
+            "types": [kind.value for kind in DocumentType],
+            "unavailable": context.settings.unavailable(),
+        },
+    )
+
+
 async def submit_form(request: Request) -> Response:
     """Show the form an officer uses to put a document in front of the system."""
     return _submit_page(request)
@@ -267,6 +292,7 @@ def build_console(context: Any) -> Starlette:  # noqa: ANN401 - api.deps.Context
     console = Starlette(
         routes=[
             Route("/", queue, name="queue"),
+            Route("/capture", capture, name="capture"),
             Route("/submit", submit_form, name="submit_form"),
             Route("/submit", submit, methods=["POST"], name="submit"),
             Route("/case/{case_id}", case, name="case"),

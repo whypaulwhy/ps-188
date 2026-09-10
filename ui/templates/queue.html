@@ -5,7 +5,8 @@
 {% block main %}
 <h1>Screening queue</h1>
 
-<p><a class="action" href="{{ base }}/submit">Screen a document</a></p>
+<p><a class="action" href="{{ base }}/capture">Screen a document</a>
+   <a class="action" href="{{ base }}/submit">Upload a file</a></p>
 
 {% if unavailable %}
 {# What this checkpoint cannot do, on the first screen rather than in a log. #}
