@@ -19,6 +19,7 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api.app import app_for
 from api.settings import NO_LEDGER_KEY, Settings
@@ -27,6 +28,7 @@ from core.privacy.retention import ArtefactCategory, RetentionPolicy
 from core.standards.verhoeff import verhoeff_digit
 from core.trust.ladder import resolve
 from datagen.synthetic_docs import generate_specimen
+from db.models import ReviewRecord
 from db.recording import load_case, record_screening
 from db.retention import sweep
 from db.session import create_session_factory
@@ -453,3 +455,28 @@ def test_the_console_and_the_api_share_one_deployment(
     )
 
     assert "officer-12" in client.get(f"/console/case/{case_id}").text
+
+
+def test_reviewing_a_destroyed_case_records_nothing(client: TestClient, settings: Settings) -> None:
+    """Found by audit. A review of a destroyed case must not become an orphan.
+
+    There is no foreign key from a review to its case, so a route that wrote
+    first and asked later would leave a named officer's decision attached to a
+    case that no longer exists, and no way to tell what they were deciding
+    about. The handler loads the case first, and this is what says so.
+    """
+    case_id = seed(settings, "case-1")
+    sweep_everything(settings)
+
+    response = client.post(
+        f"/console/case/{case_id}/review",
+        data={"outcome": "CLEARED", "officer_id": "officer-7", "note": "Looks fine to me."},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 410
+    assert "destroyed" in response.text.lower()
+
+    factory = create_session_factory(settings.database_url)
+    with factory() as session:
+        assert session.execute(select(ReviewRecord)).scalars().all() == []

@@ -28,6 +28,7 @@ from core import contracts
 from core.privacy import RawIdentifier, mask_value
 from core.privacy.identifiers import find_issuable_aadhaar
 from core.standards.verhoeff import verhoeff_digit
+from tests.support import committed_text_files
 
 REPO: Final[pathlib.Path] = pathlib.Path(__file__).parents[2]
 
@@ -62,15 +63,12 @@ REVEAL_IS_ALLOWED_IN: Final[frozenset[str]] = frozenset(
 
 
 def source_files() -> list[pathlib.Path]:
-    """Return every committed text file worth scanning."""
-    found: list[pathlib.Path] = []
-    for path in REPO.rglob("*"):
-        if not path.is_file() or path.suffix not in SCANNED_SUFFIXES:
-            continue
-        if SKIPPED_DIRECTORIES & set(path.relative_to(REPO).parts):
-            continue
-        found.append(path)
-    return sorted(found)
+    """Return every committed text file worth scanning.
+
+    Asks git rather than walking the tree, so this means what it says and gives
+    the same answer on every machine. See `tests.support.committed_text_files`.
+    """
+    return committed_text_files(SCANNED_SUFFIXES)
 
 
 FILES: Final[list[pathlib.Path]] = source_files()

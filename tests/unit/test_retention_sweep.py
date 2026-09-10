@@ -317,3 +317,50 @@ def test_the_tombstone_carries_no_decision(
 
     for forbidden in ("CLEARED", "REJECTED", "MANUAL_REVIEW", "verdict"):
         assert forbidden not in serialised, f"{forbidden!r} survived retention"
+
+
+# Found by audit: neither of these was covered
+
+
+def test_a_sweep_destroys_every_due_case_not_just_the_first(
+    factory: sessionmaker[Session], policy: RetentionPolicy
+) -> None:
+    """Several cases in one run, which nothing covered until this test.
+
+    Each destruction commits, and SQLAlchemy expires the objects a session
+    holds when it does. The remaining `CaseRecord` instances are therefore read
+    again mid-loop. That works, and it works by accident unless something says
+    so: a sweep that silently destroyed only the first overdue case would leave
+    a checkpoint quietly out of compliance with its own policy.
+    """
+    count = 5
+    with factory() as session:
+        for index in range(count):
+            screen_one(session, f"case-{index}", at=WRITTEN_AT + datetime.timedelta(minutes=index))
+
+        result = sweep(session, policy=policy, now=PAST)
+
+    assert len(result.destroyed) == count
+    assert set(result.destroyed) == {f"case-{index}" for index in range(count)}
+
+    with factory() as session:
+        assert session.execute(select(CaseRecord)).scalars().all() == []
+        for index in range(count):
+            assert load_destruction(session, f"case-{index}") is not None
+
+
+def test_the_ledger_still_verifies_after_many_destructions(
+    factory: sessionmaker[Session], policy: RetentionPolicy
+) -> None:
+    """The audit trail survives a bulk sweep, not only a single one."""
+    with factory() as session:
+        for index in range(5):
+            screen_one(session, f"case-{index}", at=WRITTEN_AT + datetime.timedelta(minutes=index))
+        sweep(session, policy=policy, now=PAST)
+        log = load_log(session)
+
+    root = log.root()
+    for index in range(len(log)):
+        assert verify_inclusion(
+            log.leaf(index), index=index, size=len(log), proof=log.proof(index), root=root
+        ), f"leaf {index} stopped verifying after a bulk destruction"

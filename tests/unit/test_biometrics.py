@@ -27,6 +27,7 @@ from core.privacy.biometrics import (
     encrypt_embedding,
 )
 from core.privacy.retention import ArtefactCategory, RetentionPolicy
+from tests.support import committed_text_files
 
 VECTOR: Final[tuple[float, ...]] = tuple(0.01 * index for index in range(512))
 MADE_AT: Final[datetime.datetime] = datetime.datetime(2026, 1, 1, 12, 0, tzinfo=datetime.UTC)
@@ -219,6 +220,7 @@ NEGATIONS: Final[tuple[str, ...]] = (
 """A sentence denying the claim is fine. A sentence making it is not."""
 
 SCANNED: Final[frozenset[str]] = frozenset({".py", ".md", ".toml", ".cfg", ".json", ".yml"})
+
 SKIPPED: Final[frozenset[str]] = frozenset(
     {".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".hypothesis"}
 )
@@ -237,14 +239,15 @@ WHITESPACE: Final[re.Pattern[str]] = re.compile(r"\s+")
 
 
 def repository_files() -> list[pathlib.Path]:
-    """Return every committed text file worth scanning."""
-    return sorted(
-        path
-        for path in REPO.rglob("*")
-        if path.is_file()
-        and path.suffix in SCANNED
-        and not SKIPPED & set(path.relative_to(REPO).parts)
-    )
+    """Return every committed text file worth scanning.
+
+    Asks git rather than walking the tree. This scan was previously missing
+    `.import_linter_cache` from its skip list and was reading a tool cache,
+    which is the defect commit 340004a fixed in the other scan and not in this
+    one. Enumerating what is committed removes the whole class of mistake
+    rather than adding one more directory name to a list.
+    """
+    return committed_text_files(SCANNED)
 
 
 FILES: Final[list[pathlib.Path]] = repository_files()

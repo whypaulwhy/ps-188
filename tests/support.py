@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime
 import json
 import pathlib
+import subprocess
 from typing import Any, Final
 
 from cryptography import x509
@@ -133,6 +134,10 @@ def subject(**overrides: Any) -> Subject:  # noqa: ANN401
     return Subject(**fields)
 
 
+REPO_ROOT: Final[pathlib.Path] = pathlib.Path(__file__).parents[1]
+"""The repository root, one level above this package."""
+
+
 def self_signed_certificate(
     folder: pathlib.Path,
     *,
@@ -226,3 +231,52 @@ def write_anchors_file(folder: pathlib.Path) -> pathlib.Path:
         encoding="utf-8",
     )
     return path
+
+
+def committed_text_files(suffixes: frozenset[str]) -> list[pathlib.Path]:
+    """Return every file git tracks whose suffix is in `suffixes`.
+
+    The repository scans that enforce rules 3 and 4 both describe themselves as
+    covering "every committed text file". Walking the filesystem is not that: it
+    also reads build output, tool caches and whatever a developer happens to
+    have left in the tree. That made the suite's test count differ between one
+    machine and a clean clone, and it meant a stray file could fail the build
+    for reasons unrelated to the repository.
+
+    Asking git makes the implementation mean what those docstrings say, and
+    makes the count identical everywhere.
+
+    Args:
+        suffixes: File extensions worth scanning, including the leading dot.
+
+    Returns:
+        Absolute paths, sorted, of the tracked files that exist on disk.
+
+    Raises:
+        RuntimeError: If git cannot list the tree. The scans enforce two of
+            CLAUDE.md's non-negotiable rules, so a scan that cannot establish
+            what is committed fails rather than falling back to something
+            weaker and calling it the same check.
+    """
+    try:
+        listed = subprocess.run(
+            ["git", "ls-files", "-z"],  # noqa: S607
+            cwd=REPO_ROOT,
+            capture_output=True,
+            check=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        msg = (
+            f"cannot ask git which files are committed, so the repository scans cannot run: {error}"
+        )
+        raise RuntimeError(msg) from error
+
+    found: list[pathlib.Path] = []
+    for name in listed.stdout.decode().split("\0"):
+        if not name:
+            continue
+        path = REPO_ROOT / name
+        if path.suffix in suffixes and path.is_file():
+            found.append(path)
+    return sorted(found)
