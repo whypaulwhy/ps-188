@@ -39,7 +39,12 @@ from core.trust.ladder import resolve
 from detectors.base import Detector
 from detectors.rung0_crypto import digilocker_xml_sig, pdf_pkcs7
 from detectors.rung0_crypto.trust_store import TrustStore
-from detectors.rung1_deterministic import expiry, field_crossmatch, mrz_checkdigits
+from detectors.rung1_deterministic import (
+    aadhaar_number,
+    expiry,
+    field_crossmatch,
+    mrz_checkdigits,
+)
 from detectors.rung2_inference import (
     face_match,
     metadata_forensics,
@@ -107,6 +112,7 @@ def assemble(deployment: Deployment) -> tuple[Detector, ...]:
         pdf_pkcs7.build(deployment.trust_store),
         mrz_checkdigits.build(),
         expiry.build(),
+        aadhaar_number.build(),
         field_crossmatch.build(),
         tamper_classical.build(),
         tamper_trufor.build(),

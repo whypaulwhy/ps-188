@@ -1,0 +1,20 @@
+# Golden case: aadhaar-number-unreadable
+#
+# A fixture input, and the exact Evidence the named detector must produce from
+# it. Rule 3 of CLAUDE.md shapes this corpus: there is no committed case for a
+# number that passes, because a passing number is an issuable Aadhaar number and
+# committing one would fail the repository scan. That case is a unit test which
+# computes the number at runtime.
+
+[case]
+id = "aadhaar-number-unreadable"
+description = "An Aadhaar card photographed so that no number could be read."
+detector = "rung1.aadhaar_number"
+declared_type = "AADHAAR"
+phase = 16
+input = "input.fields.json"
+
+[fixture]
+licence = "Synthetic. Authored for this repository and released under CC0-1.0. Contains no real person's data and no issuable document number."
+provenance = "Hand-authored 2026-09-10 as the printed fields that survive a photograph in which the number itself is illegible."
+sha256 = "6373ef96c75754377fa478ece507048c7164dd0627774b05651fc27271854471"

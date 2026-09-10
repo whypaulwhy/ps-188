@@ -862,3 +862,67 @@ administrator rights, so the tool prints the command and a person runs it. It
 also states the thing that is easy to forget while getting a demonstration to
 work, which is that reaching the console from another device means running it
 with no authentication on a shared network.
+
+
+---
+
+## Phase 16 — Aadhaar number validation (slice A)
+
+The first slice of the four-day push toward a demonstration a person can
+operate. Chosen first because it needs nothing from outside the repository and
+it is the one check that can say a document is false rather than unproven.
+
+**What was there.** `core/standards/verhoeff.py` has existed since phase 2 with
+property-based tests, and `core/privacy/identifiers.py` used it to *recognise* an
+Aadhaar-shaped number so the repository scan could refuse to commit one. **No
+detector used it.** The single most demonstrable honest check in the system was
+implemented and wired to nothing.
+
+- `detectors/rung1_deterministic/aadhaar_number.py`, Rung 1.
+- Assembled in `api.screening.assemble`, so it runs on every screening.
+
+**What it may conclude.** An issued Aadhaar number derives its last digit from
+the other eleven, so most numbers a person can invent are numbers UIDAI could
+never have issued. That is arithmetic, so it is Rung 1, so it can reject.
+
+A pass means the number is *well formed*. It is not evidence that the number was
+issued, that it belongs to the bearer, or that the card is genuine — only the
+signature in the Secure QR can say that, and that is Rung 0. The officer wording
+says so in its own sentence, because "the number checked out" is exactly the kind
+of line that gets over-read.
+
+### Three guards against refusing a genuine card
+
+The number comes from general text recognition on a photograph, and a single
+misread digit fails the arithmetic on a real card — the first-order harm in
+`docs/threat-model.md`. So it judges only a document *declared* to be an Aadhaar
+card; only when the printed page was read completely; and if several candidate
+numbers are found and any one is well formed, that one is taken as the number
+and the rest are treated as recognition noise. The failure wording also tells the
+officer that a poor photograph can cause this, before they treat it as a forgery.
+
+### What rule 3 did to the golden corpus
+
+There is no committed golden case for a number that passes. A passing number is a
+Verhoeff-valid number beginning 2 to 9, which is an issuable Aadhaar number, and
+`tests/unit/test_no_raw_identifiers.py` fails the build if one appears in any
+committed file. The passing case is therefore a unit test that computes the
+number at runtime — which is also a small proof that the detector and the
+repository scan agree on what "issuable" means.
+
+Committed: `aadhaar-number-not-issuable` (FAIL) and `aadhaar-number-unreadable`
+(NOT_APPLICABLE).
+
+### The check that made this real rather than theatre
+
+Whether any of this works depends on one thing nobody had tested: can the
+extraction pipeline read a twelve-digit number off a photograph at all? A card
+rendered at 1012x638 and put through `preprocess` and `read_printed_text` came
+back with the grouped number recovered exactly, digit for digit. Unlike the
+machine-readable strip, a printed Aadhaar number is large, well separated and not
+set in OCR-B, so it reads cleanly.
+
+**Exit criteria.** An invented number is rejected with an officer-facing reason;
+a well-formed one passes without claiming the card is genuine; nothing the
+detector reads reaches the evidence in the clear; and a document not declared as
+an Aadhaar card is never judged by this rule.

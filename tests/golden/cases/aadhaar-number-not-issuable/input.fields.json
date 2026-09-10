@@ -1,0 +1,9 @@
+{
+  "_note": "SPECIMEN. Synthetic. The number below is deliberately not issuable.",
+  "document_type": "aadhaar",
+  "full_name": "SPECIMEN TEST CASE",
+  "date_of_birth": "01/01/1990",
+  "sex": "M",
+  "aadhaar_number": "2345 6789 0120",
+  "address": "SPECIMEN, SPECIMEN DISTRICT"
+}

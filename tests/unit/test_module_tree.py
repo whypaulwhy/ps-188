@@ -99,6 +99,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "api.schemas",
         "api.screening",
         "api.settings",
+        "detectors.rung1_deterministic.aadhaar_number",
         "api.intake",
         "api.trust",
         "api.publish_checkpoint",

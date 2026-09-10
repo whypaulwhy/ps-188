@@ -1,0 +1,18 @@
+[
+  {
+    "detector_id": "rung1.aadhaar_number",
+    "rung": 1,
+    "result": "FAIL",
+    "score": null,
+    "uncertainty": null,
+    "reasons": [
+      "The number printed on this card, XXXX XXXX 0120, cannot be an Aadhaar number. Every issued number carries a built-in arithmetic pattern, and this one does not follow it.",
+      "A blurred or angled photograph can also cause this by misreading a digit. If the card looks genuine, photograph it again flat and in focus before treating this as a forgery."
+    ],
+    "standard_ref": "UIDAI Aadhaar numbering scheme: twelve digits, the last derived from the other eleven by the Verhoeff scheme",
+    "artifacts": [],
+    "runtime_ms": 0.0,
+    "model_version": "any",
+    "input_digest": "f8d0c123e9e56666ff12aef2d042014e62d5836073911f1aadce69af09550e72"
+  }
+]
