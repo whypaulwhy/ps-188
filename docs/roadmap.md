@@ -1065,3 +1065,29 @@ tests cover contract compliance only — which is what `CLAUDE.md` asks of a Run
 2 detector, and is all that can honestly be claimed. `tools/face_check.py` exists
 so that a person can point the models at images they are entitled to use and see
 the numbers for themselves.
+
+
+### First contact with real faces, and a defect it found
+
+The face models were run over eleven images supplied by the owner, held outside
+the repository. Eight contained a detectable face, at confidences between 0.75
+and 0.89, which is the first evidence in this project that the recogniser works
+on anything at all — every test before it covered contract compliance only,
+because there is deliberately no face in the corpus.
+
+All thirty-six pairs among those eight scored a similarity between **-0.14 and
++0.18**: the spread of different people, with no same-person pair among them.
+
+**`SUSPICION_THRESHOLD` was 0.55, which escalates only below a similarity of
+-0.10. Against those thirty-six pairs it escalated two.** A threshold letting
+thirty-four different-person comparisons read as "consistent with the
+photograph" is precisely the impostor attack this detector exists to notice, so
+it was moved to 0.33 — escalating below a similarity of +0.34.
+
+**This is still not a calibration**, and the module says so. The new number is
+chosen to fail closed: it is informed by ArcFace's published operating region and
+by the observed spread, and nothing here has ever compared two pictures of the
+same person, so the rate at which it escalates a genuine bearer is unmeasured.
+Erring toward escalation is the correct direction on a rung that can only send a
+case to a person. It is not a substitute for a labelled corpus, and it is the
+first thing to redo when one exists.

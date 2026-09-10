@@ -43,8 +43,32 @@ DETECTOR_VERSION: Final[str] = "face_match/1.0.0+buffalo_l"
 LIVE_CAPTURE_ROLE: Final[str] = "live_capture"
 DOCUMENT_ROLE: Final[str] = "document_front"
 
-SUSPICION_THRESHOLD: Final[float] = 0.55
-"""Above this the case is escalated. **Uncalibrated** — see the module docstring."""
+SUSPICION_THRESHOLD: Final[float] = 0.33
+"""Above this the case is escalated. Equivalent to a similarity below +0.34.
+
+**Still uncalibrated**, and the number is chosen to fail closed rather than to
+be right. Two things inform it, and neither is a calibration:
+
+1. `buffalo_l` is an ArcFace recogniser, whose conventional operating region
+   puts two pictures of the same person well above +0.3 and two people well
+   below it. That is the model's published character, not a measurement made
+   here.
+2. Eight faces available to this project scored between -0.14 and +0.18 against
+   each other across all thirty-six pairs — the spread of *different* people,
+   with no same-person pair among them to check the other side against.
+
+The first value here was 0.55, which required a similarity below -0.10 to
+escalate. Against those thirty-six pairs it escalated two. A threshold that lets
+thirty-four different-person comparisons read as "consistent with the
+photograph" is the impostor attack this detector exists to notice, so it was
+moved.
+
+**What is still unknown is the cost.** Nothing here has ever compared two
+pictures of the same person, so the rate at which this escalates a genuine
+bearer is unmeasured. Erring this way is the correct direction on a rung that
+can only send a case to a person, and it is not a substitute for a labelled
+corpus.
+"""
 
 MINIMUM_CONFIDENCE: Final[float] = 0.5
 """Below this the detector does not accept that it found a face at all.
