@@ -70,7 +70,7 @@ changed since:
 ruff             All checks passed
 mypy --strict    no issues in 26 source files (core/ only, per CLAUDE.md)
 import-linter    5 contracts kept, 0 broken
-pytest           1686 passed
+pytest           1680 passed
 coverage         core/ 100.00% branch  (gate fails below 100)
 ```
 

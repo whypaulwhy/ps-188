@@ -86,6 +86,12 @@ Built in phases, in the order set by [`docs/roadmap.md`](docs/roadmap.md).
 | 7 | Rung 2, biometrics | ◐ partial |
 | 8 | Rung 3, contextual advisories | ✅ |
 | 9 | API, database, ledger, officer console | ✅ |
+| 10 | Retention, enforced | ✅ |
+| 11 | The console's front door — an upload form | ✅ |
+| 12 | Trust anchors, configurable | ✅ |
+| 13 | Checkpoint publication | ✅ |
+| 14 | Consistency proofs | ✅ |
+| 15 | A preflight check for demonstrations | ✅ |
 
 **Working today:** the trust ladder and evidence contract; ICAO 9303 TD3 parsing
 and check-digit arithmetic; Verhoeff; two-digit-year century recovery; keyed
@@ -170,6 +176,48 @@ deployment **cannot** do as well as that it is running. With no signing key
 configured it will say so, and refuse to publish a ledger checkpoint rather than
 sign one with a key it made up at start-up.
 
+An officer submits a document at `/console/submit`. The form carries
+`capture="environment"`, so on a phone it opens the camera directly.
+
+### Seeing it work without running anything
+
+```bash
+uv run python tools/demo.py
+```
+
+Screens a genuine synthetic document, then a forged one, records an officer
+override beside the verdict rather than over it, publishes a chained series of
+checkpoints, and has a third party verify that series. It uses a throwaway
+database, needs no network, no server and no browser, and prints exactly what an
+officer would read. **Nothing about it can fail on the day.**
+
+### The tools
+
+| | |
+|---|---|
+| `tools/demo.py` | the whole story, offline, in one command |
+| `tools/verify_checkpoint.py` | what a **third party** runs. Imports nothing from this project; needs only `cryptography` |
+| `tools/demo_preflight.py` | why a phone on the same network cannot reach the console, when it cannot |
+| `python -m api.publish_checkpoint --out DIR [--since PREV.json]` | write a signed checkpoint out for transfer |
+| `python -m api.retention_job [--dry-run]` | destroy case records past their retention window |
+
+### Configuration
+
+Everything below is optional, and everything absent is **stated on every case**
+rather than silently skipped.
+
+| Variable | What its absence means |
+|---|---|
+| `SENTINELID_DB_URL` | required; refused rather than defaulted |
+| `SENTINELID_CHECKPOINT_ID` | required; refused rather than defaulted |
+| `SENTINELID_HASH_KEY_FILE` | no repeat-crossing or watchlist checks |
+| `SENTINELID_LEDGER_KEY_FILE` | no checkpoint can be published |
+| `SENTINELID_TRUST_ANCHORS_FILE` | **no document can ever be cleared** |
+| `SENTINELID_RETENTION_POLICY_FILE` | nothing is ever destroyed |
+
+Keys are files, never environment variables: an environment variable is visible
+in `/proc` and in `docker inspect`.
+
 ## Layout
 
 ```
@@ -187,6 +235,7 @@ api/           HTTP surface: screenings, cases, reviews, ledger proofs
 ui/            officer console, server-rendered, no JavaScript
 datagen/       synthetic specimens and forgeries (phase 6)
 eval/          the only sanctioned source of performance numbers
+tools/         operator scripts: the demonstration, and what a third party runs
 tests/         unit, golden fixtures, integration
 docs/          scope, threat model, trust ladder, ADRs
 ```
