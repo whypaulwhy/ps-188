@@ -1,0 +1,819 @@
+<title>How SENTINEL ID Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground:      #FBFBFC;
+    --surface:     #FFFFFF;
+    --surface-alt: #F2F4F7;
+    --ink:         #14161B;
+    --ink-2:       #3A3F4A;
+    --muted:       #666D7A;
+    --line:        #E1E4EA;
+
+    --accent:      #1B3B6F;
+    --accent-soft: #E8EDF6;
+
+    --good:        #1A6B4F;
+    --warn:        #8A6A0F;
+    --bad:         #A32B25;
+    --good-bg:     #E4F1EB;
+    --warn-bg:     #F6EEDA;
+    --bad-bg:      #F7E4E3;
+
+    --rung0: #16305C;
+    --rung1: #33558C;
+    --rung2: #6C86B4;
+    --rung3: #A7B6CE;
+
+    --sans: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E1015;
+      --surface:     #15181F;
+      --surface-alt: #1B1F28;
+      --ink:         #EDEFF3;
+      --ink-2:       #C3C8D2;
+      --muted:       #8C94A3;
+      --line:        #262B35;
+      --accent:      #8FB2E8;
+      --accent-soft: #1A2233;
+      --good:        #63C79E;
+      --warn:        #D9B14E;
+      --bad:         #E8837C;
+      --good-bg:     #14261F;
+      --warn-bg:     #2A2313;
+      --bad-bg:      #2C1817;
+      --rung0: #A9C6F0;
+      --rung1: #86A6D8;
+      --rung2: #5D7CAC;
+      --rung3: #414D63;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0E1015;
+    --surface:     #15181F;
+    --surface-alt: #1B1F28;
+    --ink:         #EDEFF3;
+    --ink-2:       #C3C8D2;
+    --muted:       #8C94A3;
+    --line:        #262B35;
+    --accent:      #8FB2E8;
+    --accent-soft: #1A2233;
+    --good:        #63C79E;
+    --warn:        #D9B14E;
+    --bad:         #E8837C;
+    --good-bg:     #14261F;
+    --warn-bg:     #2A2313;
+    --bad-bg:      #2C1817;
+    --rung0: #A9C6F0;
+    --rung1: #86A6D8;
+    --rung2: #5D7CAC;
+    --rung3: #414D63;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 28px 100px; }
+  .col { max-width: 68ch; }
+
+  header.top {
+    border-bottom: 2px solid var(--ink);
+    padding: 44px 0 22px;
+    margin-bottom: 42px;
+  }
+  .kicker {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+    line-height: 1.05;
+    letter-spacing: -0.022em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 60ch; margin: 0; }
+
+  section { margin-bottom: 62px; }
+
+  h2 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.015em;
+    margin: 0 0 8px;
+    text-wrap: balance;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1.06rem;
+    margin: 32px 0 8px;
+  }
+  h4 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 22px 0 6px;
+    color: var(--ink-2);
+  }
+  p { margin: 0 0 16px; }
+  .col > p:last-child { margin-bottom: 0; }
+
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--surface-alt);
+    padding: 0.1em 0.36em;
+    border-radius: 3px;
+    color: var(--ink-2);
+  }
+  strong { font-weight: 600; color: var(--ink); }
+  em.term { font-style: normal; font-weight: 600; color: var(--accent); }
+
+  ul.plain, ol.plain { margin: 0 0 16px; padding-left: 1.2em; }
+  ul.plain li, ol.plain li { margin-bottom: 8px; }
+
+  /* analogy blocks */
+  .analogy {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    margin: 22px 0;
+    font-size: 0.98rem;
+  }
+  .analogy .lbl {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .analogy p { margin-bottom: 10px; }
+  .analogy p:last-child { margin-bottom: 0; }
+
+  /* the ladder */
+  .ladder { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 22px; }
+  .rung {
+    display: grid;
+    grid-template-columns: 104px 1fr 150px;
+    gap: 20px;
+    align-items: start;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--rc);
+  }
+  .rung.r0 { --rc: var(--rung0); }
+  .rung.r1 { --rc: var(--rung1); }
+  .rung.r2 { --rc: var(--rung2); }
+  .rung.r3 { --rc: var(--rung3); }
+  .rung .tag { font-family: var(--mono); font-size: 12px; color: var(--rc); padding-top: 2px; }
+  .rung .name { font-family: var(--sans); font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+  .rung .what { font-family: var(--sans); font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+  .rung .power { font-family: var(--sans); font-size: 12.5px; font-weight: 600; text-align: right; }
+  .power.yes { color: var(--good); }
+  .power.no { color: var(--muted); }
+  @media (max-width: 720px) {
+    .rung { grid-template-columns: 1fr; gap: 8px; }
+    .rung .power { text-align: left; }
+  }
+
+  /* pipeline */
+  .pipe-scroll { overflow-x: auto; margin: 12px 0 20px; padding-bottom: 6px; }
+  .pipe { display: flex; min-width: 780px; }
+  .stage {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-right: none;
+    padding: 14px 15px;
+  }
+  .stage:last-child { border-right: 1px solid var(--line); }
+  .stage .n {
+    font-family: var(--mono); font-size: 10.5px; color: var(--accent);
+    display: block; margin-bottom: 6px;
+  }
+  .stage .t { font-family: var(--sans); font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; }
+  .stage .d { font-family: var(--sans); font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+
+  /* tables */
+  .scroller { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--line); }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 0.88rem; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--muted);
+    background: var(--surface-alt); white-space: nowrap;
+  }
+  tbody tr { background: var(--surface); }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { font-size: 0.82em; }
+
+  /* glossary */
+  .glossary { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .gitem { background: var(--surface); padding: 15px 20px; display: grid; grid-template-columns: 190px 1fr; gap: 20px; }
+  .gitem .word { font-family: var(--sans); font-weight: 600; font-size: 0.93rem; }
+  .gitem .word span { display: block; font-weight: 400; font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .gitem .def { font-family: var(--sans); font-size: 0.9rem; color: var(--ink-2); line-height: 1.55; }
+  @media (max-width: 720px) { .gitem { grid-template-columns: 1fr; gap: 6px; } }
+
+  /* q&a */
+  details { border: 1px solid var(--line); background: var(--surface); margin-bottom: -1px; }
+  summary {
+    cursor: pointer; padding: 15px 20px;
+    font-family: var(--sans); font-weight: 600; font-size: 0.95rem;
+    list-style: none; display: flex; gap: 12px; align-items: baseline;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+"; font-family: var(--mono); color: var(--accent); flex-shrink: 0; }
+  details[open] summary::before { content: "\2212"; }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+  .answer { padding: 16px 20px 18px 44px; font-size: 0.97rem; }
+  .answer p { margin-bottom: 12px; }
+  .answer p:last-child { margin-bottom: 0; }
+
+  pre {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+    background: var(--surface-alt); border: 1px solid var(--line);
+    padding: 15px 18px; overflow-x: auto; margin: 0 0 18px; color: var(--ink-2);
+  }
+
+  .flag {
+    display: inline-block; font-family: var(--sans); font-size: 10.5px;
+    font-weight: 700; padding: 2px 8px; border-radius: 2px; white-space: nowrap;
+  }
+  .flag.ok { color: var(--good); background: var(--good-bg); }
+  .flag.part { color: var(--warn); background: var(--warn-bg); }
+  .flag.no { color: var(--bad); background: var(--bad-bg); }
+
+  footer {
+    border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px;
+    font-family: var(--sans); font-size: 0.85rem; color: var(--muted);
+  }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">SENTINEL ID · SIH26188 · Team VOID MATRIX</div>
+  <h1>How SENTINEL&nbsp;ID Works</h1>
+  <p class="lede">
+    Everything in this project, explained from the beginning — what each piece is,
+    what it does, why it was chosen, and what to say when someone asks you
+    something you were not expecting.
+  </p>
+</header>
+
+<section>
+  <h2>Start here: the one-sentence version</h2>
+  <div class="col">
+    <p style="font-size:1.2rem;color:var(--ink)">
+      <strong>A border officer photographs a document; the system checks everything
+      it can actually prove, and hands back a decision plus an honest list of
+      everything it could not check.</strong>
+    </p>
+    <p>
+      That second half is the unusual part. Most systems tell you what they found.
+      This one also tells you what it <em>didn't look at</em>, every single time.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>1 · The problem we were given</h2>
+  <div class="col">
+    <p>
+      The SSB guards the India–Nepal and India–Bhutan borders. The India–Nepal
+      border is <strong>open</strong> — under the 1950 Treaty of Peace and
+      Friendship, Nepali citizens cross without a passport or a visa.
+    </p>
+    <p>Which means, practically:</p>
+    <ul class="plain">
+      <li><strong>Nobody knows who is coming.</strong> There is no passenger list, no booking, no advance manifest. At an airport the system knows your name hours early. Here it knows nothing until a person is standing there.</li>
+      <li><strong>The documents are wildly varied.</strong> An Aadhaar card, a photocopy of one, a Nepali citizenship certificate handwritten by a district office, a voter card, a driving licence, a passport.</li>
+      <li><strong>The same people cross every day.</strong> Many are daily commuters — traders, students, workers. A system that wrongly stops someone stops them again tomorrow, and the day after.</li>
+    </ul>
+  </div>
+  <div class="analogy">
+    <span class="lbl">Why the obvious approach fails</span>
+    <p>
+      The tempting build is a neural network that looks at a document and says
+      <em>"94% genuine"</em>. It demos beautifully.
+    </p>
+    <p>
+      But an officer cannot act on 94%. Is that a pass? And if that person is later
+      found with a forged document, what does the officer say in the inquiry —
+      "the computer said 94"? A court cannot review a number. That system fails
+      the only two tests that matter: <strong>can a person act on it</strong>, and
+      <strong>can it be defended afterwards</strong>.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>2 · The big idea — the trust ladder</h2>
+  <div class="col">
+    <p>
+      This is the heart of the project. If you remember one thing, remember this.
+    </p>
+    <p>
+      Different kinds of checking produce different <strong>qualities</strong> of
+      evidence. Checking a cryptographic signature is not the same kind of fact as
+      a model saying an image "looks edited". So instead of mixing them into one
+      score, every check declares which <em class="term">rung</em> it sits on — and
+      <strong>a lower rung can never override a higher one.</strong>
+    </p>
+  </div>
+
+  <div class="ladder">
+    <div class="rung r0">
+      <div class="tag">RUNG 0</div>
+      <div>
+        <div class="name">Cryptographic proof</div>
+        <div class="what">The government that issued this document signed it, and the signature checks out. Mathematics, not opinion.</div>
+      </div>
+      <div class="power yes">Can clear ✓</div>
+    </div>
+    <div class="rung r1">
+      <div class="tag">RUNG 1</div>
+      <div>
+        <div class="name">Deterministic arithmetic</div>
+        <div class="what">Sums that either work or don't. Check digits on the passport strip, expiry dates, fields that must agree.</div>
+      </div>
+      <div class="power no">Can only reject</div>
+    </div>
+    <div class="rung r2">
+      <div class="tag">RUNG 2</div>
+      <div>
+        <div class="name">The AI</div>
+        <div class="what">Machine learning. Spotting edited photos, comparing faces, detecting a photo of a photo. Produces a score and an uncertainty.</div>
+      </div>
+      <div class="power no">Can never clear</div>
+    </div>
+    <div class="rung r3">
+      <div class="tag">RUNG 3</div>
+      <div>
+        <div class="name">Context</div>
+        <div class="what">"This document crossed four times today." "This number is on a watchlist." Information for the officer.</div>
+      </div>
+      <div class="power no">Decides nothing</div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      <strong>Look at the right-hand column.</strong> The AI is on rung 2, and rung 2
+      can only ever push a case <em>toward</em> a human or toward rejection. No
+      matter how confident the model is, it cannot wave anyone through.
+    </p>
+  </div>
+
+  <div class="analogy">
+    <span class="lbl">The analogy that works on anyone</span>
+    <p>
+      Think of a hospital. A <strong>blood test result</strong> is one kind of fact.
+      A <strong>junior doctor's hunch</strong> that "something looks off" is a
+      different kind. Both are useful. But you would never let the hunch overrule
+      the blood test, and you would never discharge a patient on a hunch alone.
+    </p>
+    <p>
+      The trust ladder is that rule, written into the software so it cannot be
+      forgotten on a busy day.
+    </p>
+  </div>
+
+  <h3>How a final decision gets made</h3>
+  <div class="col">
+    <p>There are exactly three possible outcomes, and the rules are short:</p>
+    <ul class="plain">
+      <li>Any rung-1 <strong>failure</strong> → <code>REJECTED</code>. The arithmetic didn't work; there is nothing to argue about.</li>
+      <li>Any rung-2 <strong>concern</strong> → <code>MANUAL_REVIEW</code>. A person must look.</li>
+      <li>A rung-0 <strong>valid signature</strong>, and nothing above → <code>CLEARED</code>.</li>
+      <li>Anything else → <code>MANUAL_REVIEW</code>. <strong>Uncertainty always goes to a human, never to "cleared".</strong> We call this <em class="term">failing closed</em>.</li>
+    </ul>
+    <p>
+      One subtlety worth knowing, because it's a real design decision: <strong>a
+      concern outranks a valid signature.</strong> A genuinely signed document can
+      still have been physically altered after it was issued, so if the tamper
+      detector raises something, the case goes to a person even though the signature
+      is fine.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>3 · What happens to one document, step by step</h2>
+  <div class="pipe-scroll">
+    <div class="pipe">
+      <div class="stage"><span class="n">STEP 1</span><div class="t">Capture</div><div class="d">A photo or PDF arrives from the officer's phone or the console upload form.</div></div>
+      <div class="stage"><span class="n">STEP 2</span><div class="t">Extraction</div><div class="d">Straighten the image, find the code strip, read the QR, read the text.</div></div>
+      <div class="stage"><span class="n">STEP 3</span><div class="t">Detectors</div><div class="d">13 independent checks run. Each returns evidence — or evidence saying it couldn't run.</div></div>
+      <div class="stage"><span class="n">STEP 4</span><div class="t">The ladder</div><div class="d">A pure function turns all that evidence into one verdict.</div></div>
+      <div class="stage"><span class="n">STEP 5</span><div class="t">Record</div><div class="d">The case and its audit-log entry are written together, or neither is.</div></div>
+      <div class="stage"><span class="n">STEP 6</span><div class="t">Officer</div><div class="d">The console shows the decision and everything unchecked. Any override is added, never substituted.</div></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>The rule that makes step 3 unusual</h3>
+    <p>
+      Every detector must return a structured <em class="term">Evidence</em> object.
+      It is never allowed to return just "true", "false", or a number. Every piece
+      of evidence carries:
+    </p>
+  </div>
+<pre>detector_id     which check produced this
+rung            0, 1, 2 or 3 - how much authority it has
+result          PASS / FAIL / PROOF_VALID / INCONCLUSIVE ...
+score           only for rung 2, and only with an uncertainty
+reasons         plain sentences an officer reads
+standard_ref    "ICAO Doc 9303 Part 3 s.4.2.2" - the published rule
+runtime_ms, model_version, input_digest</pre>
+  <div class="col">
+    <p>
+      Two of those fields carry the whole philosophy. <code>reasons</code> is written
+      for someone who has never heard of a check digit — there is a test that fails
+      the build if the phrase "check digit" ever appears in one.
+      <code>standard_ref</code> names the published standard the conclusion rests on,
+      which is what makes a rejection defensible in an inquiry years later.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>4 · The parts list — what we used and why</h2>
+  <div class="col">
+    <p>
+      Everything is <strong>Python 3.12</strong>. There is no JavaScript framework,
+      no Node, and nothing runs in the cloud. A border post may have no internet at
+      all, so every part of this works offline on one machine.
+    </p>
+  </div>
+
+  <h3>The folders</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Folder</th><th>What it is</th><th>Why it exists</th></tr></thead>
+      <tbody>
+        <tr><td><code>core/</code></td><td>The decision-making brain</td><td>Pure logic. No internet, no database, no AI models. This is the only part held to 100% test coverage.</td></tr>
+        <tr><td><code>detectors/</code></td><td>The individual checks</td><td>Grouped by rung. Each one returns Evidence and nothing else.</td></tr>
+        <tr><td><code>extraction/</code></td><td>Photo → readable data</td><td>Straightening, finding the code strip, QR decoding, text recognition.</td></tr>
+        <tr><td><code>ledger/</code></td><td>The tamper-evident audit log</td><td>Proves records haven't been altered after the fact.</td></tr>
+        <tr><td><code>db/</code></td><td>Storage</td><td>SQLite, plus a guard that refuses to save a raw document number.</td></tr>
+        <tr><td><code>api/</code></td><td>The web service</td><td>Where documents come in and results go out.</td></tr>
+        <tr><td><code>ui/</code></td><td>The officer's screen</td><td>Plain server-rendered HTML. No JavaScript at all.</td></tr>
+        <tr><td><code>datagen/</code></td><td>Fake document generator</td><td>Makes test documents and five kinds of forgery, so we never need real people's IDs.</td></tr>
+        <tr><td><code>eval/</code></td><td>The measuring instrument</td><td>The <em>only</em> place performance numbers may come from.</td></tr>
+        <tr><td><code>tools/</code></td><td>Scripts for humans</td><td>The demo, and the verifier we hand to outsiders.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The technologies, in plain terms</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>What</th><th>In one line</th><th>Where we use it</th></tr></thead>
+      <tbody>
+        <tr><td><strong>FastAPI</strong></td><td>Turns Python functions into a web service</td><td>Receiving documents, returning verdicts</td></tr>
+        <tr><td><strong>Pydantic</strong></td><td>Refuses to build an object with wrong or missing data</td><td>Every contract; it's why bad evidence can't exist</td></tr>
+        <tr><td><strong>SQLite</strong></td><td>A whole database in a single file</td><td>Storing cases. No server to install at a border post</td></tr>
+        <tr><td><strong>SQLAlchemy + Alembic</strong></td><td>Talking to the database; versioning its shape</td><td>Storage, and safe upgrades</td></tr>
+        <tr><td><strong>ONNX Runtime</strong></td><td>Runs trained AI models without the training framework</td><td>All rung-2 models. Small and CPU-only</td></tr>
+        <tr><td><strong>OpenCV + NumPy</strong></td><td>Image maths</td><td>Straightening photos, finding the code strip</td></tr>
+        <tr><td><strong>Tesseract / RapidOCR</strong></td><td>Reading text from an image</td><td>The machine-readable strip and the printed page</td></tr>
+        <tr><td><strong>pyzbar</strong></td><td>Reads QR codes and barcodes</td><td>Aadhaar Secure QR, DigiLocker codes</td></tr>
+        <tr><td><strong>cryptography</strong></td><td>Signatures and encryption</td><td>Rung 0 verification, the audit log, encrypting face data</td></tr>
+        <tr><td><strong>pytest + hypothesis</strong></td><td>Testing; and testing with thousands of generated cases</td><td>1,680 tests. Hypothesis proves the maths, not just examples</td></tr>
+        <tr><td><strong>ruff + mypy</strong></td><td>Catch mistakes before the code runs</td><td>Every push</td></tr>
+        <tr><td><strong>import-linter</strong></td><td>Stops one part of the code importing another</td><td>Keeps <code>core/</code> pure — enforced, not trusted</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>5 · The audit trail — and why it's the best part</h2>
+  <div class="col">
+    <p>
+      Every decision is written into a <em class="term">Merkle transparency log</em>.
+      This sounds intimidating and the idea is simple.
+    </p>
+  </div>
+  <div class="analogy">
+    <span class="lbl">How a Merkle log works, without maths</span>
+    <p>
+      Take every record and turn it into a short fingerprint. Pair the fingerprints
+      up and fingerprint each pair. Keep going until you have <strong>one
+      fingerprint for the entire history</strong>, called the <em>root</em>.
+    </p>
+    <p>
+      Change any single record — even one letter — and the root changes completely.
+      So if you publish the root today and someone edits a record tomorrow, the
+      numbers no longer match, and anyone can see it.
+    </p>
+  </div>
+  <div class="col">
+    <p>
+      We sign that root with a cryptographic key and write it to a file. That file
+      is a <em class="term">checkpoint</em>. It has to be given to somebody outside
+      the border post — a supervisor, another department — because a checkpoint that
+      never leaves the machine proves nothing: whoever holds the database could just
+      recompute a different history.
+    </p>
+    <p>
+      A later checkpoint carries a <em class="term">consistency proof</em>: proof
+      that the log only had things <em>added</em> to it, and nothing removed or
+      rewritten. And anyone can check all of this with
+      <code>tools/verify_checkpoint.py</code> — one file that imports nothing from
+      our project.
+    </p>
+    <p>
+      <strong>That is your strongest demo moment.</strong> Hand a judge two
+      checkpoint files and that one script, and let them verify your audit log on
+      their own laptop with your system switched off.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>6 · Privacy — the rules we cannot break</h2>
+  <div class="col">
+    <p>
+      Aadhaar Act 2016, sections 29 and 37, make storing Aadhaar numbers a criminal
+      matter. So the project has five rules that override everything, including any
+      instruction to change them.
+    </p>
+    <ol class="plain">
+      <li><strong>Fail closed.</strong> Uncertain always means "a human decides", never "cleared".</li>
+      <li><strong>Never invent a number.</strong> No accuracy figure exists anywhere unless the evaluation harness produced it on a named dataset.</li>
+      <li><strong>Never store an Aadhaar number.</strong> Only a keyed one-way fingerprint (an <em class="term">HMAC</em>) is stored.</li>
+      <li><strong>Face data is not anonymous.</strong> A face embedding can be partially reversed back into a face, so we never call it anonymous. It's encrypted, with a deletion deadline.</li>
+      <li><strong>Architecture boundary.</strong> The brain can't reach the internet or the database. Enforced by a tool, not by trust.</li>
+    </ol>
+    <p>
+      Rules 3 and 4 are enforced by a scan that reads every committed file and
+      <strong>fails the build</strong> if it finds an Aadhaar-shaped number, or a
+      sentence describing face data as anonymous. That scan caught three of our own
+      sentences.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>7 · What it honestly cannot do</h2>
+  <div class="col">
+    <p>
+      Lead with this in your presentation. It is the most credible thing about the
+      project, and it disarms the hardest questions before they're asked.
+    </p>
+  </div>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Thing</th><th>State</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Screened a real document</td><td><span class="flag no">Never</span></td><td>Every figure we have describes documents we generated ourselves.</td></tr>
+        <tr><td>Clear any document today</td><td><span class="flag no">No</span></td><td>No real issuer certificate installed. The mechanism is built; nothing real is in it.</td></tr>
+        <tr><td>Aadhaar QR signature</td><td><span class="flag no">Stub</span></td><td>No specimen. Guessing the byte layout would make it approve documents it never checked.</td></tr>
+        <tr><td>Passport chip reading</td><td><span class="flag no">Blocked</span></td><td>Needs hardware we don't have.</td></tr>
+        <tr><td>Face matching / liveness</td><td><span class="flag no">Abstains</span></td><td>No model weights, and we deliberately generate no synthetic faces.</td></tr>
+        <tr><td>Read the second strip line</td><td><span class="flag part">Unreliable</span></td><td>Tesseract has no OCR-B training data. It refuses rather than guessing.</td></tr>
+        <tr><td>Authentication</td><td><span class="flag no">None</span></td><td>Needs a deployment decision about how staff sign in.</td></tr>
+        <tr><td>Everything else</td><td><span class="flag ok">Works</span></td><td>Ladder, evidence, extraction, storage, audit log, console, reports.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="analogy">
+    <span class="lbl">Why this is a strength, not an excuse</span>
+    <p>
+      In every one of those rows the easy move was to ship something that
+      <em>looks</em> like it works. Instead the system says <code>INCONCLUSIVE</code>
+      or <code>NOT_CHECKED</code> and tells the officer which.
+    </p>
+    <p>
+      A check that quietly guesses is worse than one that declines, because nobody
+      downstream can tell the difference.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>8 · Vocabulary you'll hear</h2>
+  <div class="glossary">
+    <div class="gitem"><div class="word">MRZ<span>machine-readable zone</span></div><div class="def">The two lines of <code>&lt;&lt;&lt;</code> letters at the bottom of a passport. Designed to be read by machines.</div></div>
+    <div class="gitem"><div class="word">Check digit</div><div class="def">An extra digit calculated from the others. If someone changes a number, the sum stops working. Like the last digit of a credit card.</div></div>
+    <div class="gitem"><div class="word">Verhoeff</div><div class="def">The specific check-digit formula Aadhaar uses. It catches every single-digit typo and every swap of two neighbouring digits.</div></div>
+    <div class="gitem"><div class="word">ICAO 9303</div><div class="def">The international standard defining passport layout. We cite it by section whenever we reject a document.</div></div>
+    <div class="gitem"><div class="word">Hash</div><div class="def">A one-way fingerprint of data. Same input, same fingerprint — but you can't work backwards to the input.</div></div>
+    <div class="gitem"><div class="word">HMAC</div><div class="def">A hash that also needs a secret key. Without the key you can't even test guesses. This is how document numbers are stored.</div></div>
+    <div class="gitem"><div class="word">Merkle tree</div><div class="def">A structure that produces one fingerprint for an entire history, so any edit anywhere is detectable.</div></div>
+    <div class="gitem"><div class="word">Ed25519</div><div class="def">A modern digital signature algorithm. We use it to sign checkpoints.</div></div>
+    <div class="gitem"><div class="word">RFC 6962</div><div class="def">The published standard for transparency logs, originally built to police the internet's certificate system. We follow it exactly.</div></div>
+    <div class="gitem"><div class="word">Trust anchor</div><div class="def">An issuer's public key that we've deliberately decided to believe. Adding one is a serious act — it's a licence to clear documents.</div></div>
+    <div class="gitem"><div class="word">Fail closed</div><div class="def">When unsure, take the safe option. Here, the safe option is always "a human looks at it".</div></div>
+    <div class="gitem"><div class="word">Branch coverage</div><div class="def">Not just "was this line run by a test", but "was every yes/no path through it tested". <code>core/</code> is at 100%.</div></div>
+    <div class="gitem"><div class="word">Property-based testing<span>hypothesis</span></div><div class="def">Instead of testing five examples, state a rule that must always hold and let the computer try thousands of inputs to break it.</div></div>
+    <div class="gitem"><div class="word">ADR<span>architecture decision record</span></div><div class="def">A short document recording a decision, the alternatives, and why. We have seven.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>9 · Decisions someone might challenge</h2>
+  <div class="col">
+    <p>Each of these was a real choice, with a written reason. Knowing them makes you sound like you built it — because you did.</p>
+  </div>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>We chose</th><th>Over</th><th>Because</th></tr></thead>
+      <tbody>
+        <tr><td>Python only</td><td>Adding a JavaScript front end</td><td>One language, one toolchain, no build step to break at a border post.</td></tr>
+        <tr><td>ONNX Runtime</td><td>PyTorch</td><td>Far smaller, CPU-only, no training framework needed just to run a model.</td></tr>
+        <tr><td>Our own Merkle log</td><td>Hyperledger Fabric (blockchain)</td><td>A blockchain needs several independent organisations to mean anything. One operator running it is a slow database with extra steps.</td></tr>
+        <tr><td>Keyed HMAC</td><td>Salted hash</td><td>A salt is stored beside the data. A key is held separately, so stealing the database isn't enough.</td></tr>
+        <tr><td>Log stores a fingerprint</td><td>Log stores the verdict</td><td>The log must be permanent; privacy law says records must be deleted. Storing only a fingerprint satisfies both.</td></tr>
+        <tr><td>Officer decisions are added</td><td>Overwriting the verdict</td><td>Rewriting it would make the record claim the system verified something it didn't.</td></tr>
+        <tr><td>SQLite</td><td>PostgreSQL</td><td>One offline box, thousands of crossings a day. A database server is one more thing to fail where there's no network.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>10 · If you get a question you can't answer</h2>
+  <div class="col">
+    <p>
+      You will. Everyone does. Here is how to handle it without losing credibility —
+      and honestly, handling it well impresses people <em>more</em> than knowing
+      everything.
+    </p>
+    <h4>The three-step move</h4>
+    <ol class="plain">
+      <li><strong>Say what you do know</strong> about that area — the principle, even if not the detail.</li>
+      <li><strong>Say plainly where your knowledge stops.</strong> "I'd have to check exactly how that's implemented."</li>
+      <li><strong>Say where the answer lives.</strong> "That decision is written up in ADR 0005" or "the reasoning is in the roadmap".</li>
+    </ol>
+    <p>
+      That last step is the one that lands. It shows the project has a memory, not
+      just a demo.
+    </p>
+    <h4>Three sentences that always work</h4>
+    <ul class="plain">
+      <li>"We deliberately didn't build that, and here's why —" (nearly every gap in this project was a choice, and the reason is written down).</li>
+      <li>"I don't want to guess at a number. The only measured figures we have are in the evaluation report, and they're on synthetic data."</li>
+      <li>"That's outside what we could verify, so the system routes it to a human."</li>
+    </ul>
+    <p>
+      <strong>Never invent a number under pressure.</strong> One fabricated accuracy
+      figure, spotted, costs you more than ten "I don't knows".
+    </p>
+  </div>
+
+  <h3>The five questions most likely to come</h3>
+
+  <details>
+    <summary>"What's your accuracy?"</summary>
+    <div class="answer">
+      <p>
+        Against real documents — unknown, and anyone quoting a figure is inventing
+        it. We have never seen a real document. What we can tell you is the
+        false-alarm rate on our own generated corpus, which is zero, and exactly
+        which of five forgery types the detector catches, which is one.
+      </p>
+      <p>
+        There's a rule in our repository that a number can't appear anywhere unless
+        our evaluation harness produced it on a named dataset. That rule is why the
+        numbers we do quote can be defended.
+      </p>
+    </div>
+  </details>
+
+  <details>
+    <summary>"Where's the AI? This looks like rule checking."</summary>
+    <div class="answer">
+      <p>
+        The AI is on rung 2 — tamper detection, face matching, liveness — and it's
+        deliberately the <em>least</em> powerful layer. It can escalate a document to
+        a human. It cannot clear one.
+      </p>
+      <p>
+        That constraint is our actual contribution. A model that can clear a document
+        is a model whose false positives wave forgeries through a border.
+      </p>
+    </div>
+  </details>
+
+  <details>
+    <summary>"So it doesn't clear anything? What's the point?"</summary>
+    <div class="answer">
+      <p>
+        Not today — no real issuer certificate is installed, and we won't fake one.
+      </p>
+      <p>
+        But here's the thing we found during scoping: of eleven document types in
+        scope, only <strong>two</strong> carry anything a machine can verify at all,
+        and both are Indian. A Nepali citizenship certificate carries nothing. So on
+        these borders, this system is triage and evidence — not clearance. It tells
+        an officer what was checked, what failed, and what couldn't be checked. That
+        is a large improvement on an unaided glance, and it's an honest description
+        of what's achievable.
+      </p>
+    </div>
+  </details>
+
+  <details>
+    <summary>"Why should I trust your audit log?"</summary>
+    <div class="answer">
+      <p>
+        You shouldn't — that's the point. Here are two checkpoint files and a
+        verification script that imports nothing from our project. Run it on your own
+        laptop. Our system doesn't even need to be switched on.
+      </p>
+      <p>
+        If it says <em>"PROVED to extend the previous checkpoint"</em>, then between
+        those two moments our log had entries added and nothing removed or rewritten
+        — and you established that yourself, not because we told you.
+      </p>
+    </div>
+  </details>
+
+  <details>
+    <summary>"What would you do with another month?"</summary>
+    <div class="answer">
+      <p>
+        Nothing on the model side. The three highest-value things are all outside the
+        code: a real issuer certificate so documents can actually be cleared, a
+        passport chip reader, and OCR-B training data so the machine-readable strip
+        reads reliably.
+      </p>
+      <p>
+        In the code itself, the remaining item is authentication — and that's blocked
+        on a decision about how a border post signs its staff in, which isn't a
+        technical question.
+      </p>
+    </div>
+  </details>
+</section>
+
+<section>
+  <h2>11 · The one command to remember</h2>
+  <div class="col">
+    <p>If everything else fails on the day, this runs offline in about fifteen seconds:</p>
+  </div>
+<pre>cd "D:\ps 188"
+uv run python tools/demo.py</pre>
+  <div class="col">
+    <p>
+      It screens a genuine document, then a forged one, records an officer override,
+      publishes a chained pair of checkpoints, and has a third party verify them.
+      No network, no server, no browser, nothing to connect.
+    </p>
+    <p>
+      The full running order, the fallbacks and the numbers you're allowed to say
+      out loud are in <code>docs/demonstration.md</code>.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <p>
+    SENTINEL ID · Smart India Hackathon 2026 · problem statement SIH26188 · team
+    VOID MATRIX. Every claim on this page is checkable in the repository.
+    The only measured figures anywhere in the project are in
+    <code>eval/reports/</code>, and they describe synthetic documents this project
+    generated — no real document has ever been screened by it.
+  </p>
+</footer>
+
+</div>

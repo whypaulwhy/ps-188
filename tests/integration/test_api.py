@@ -130,8 +130,18 @@ def test_a_screening_returns_what_was_not_checked(client: TestClient) -> None:
     """The honesty rule, at the HTTP boundary. A JSON body is a report."""
     body = screen(client)
 
-    assert body["not_checked"]
-    assert NOT_CHECKED_HEADING in str(body["report"])
+    # Spelled out because this failed once, during a loaded run, and could not be
+    # reproduced in four more. A bare `assert body["not_checked"]` says nothing
+    # about which of the two claims broke or what the case actually contained, so
+    # the one observation was unusable. If it happens again, this will say why.
+    assert body["not_checked"], (
+        f"a screening of unreadable bytes listed nothing as unchecked. "
+        f"decision={body.get('decision')!r} report={str(body.get('report'))[:400]!r}"
+    )
+    assert NOT_CHECKED_HEADING in str(body["report"]), (
+        f"the report omitted the {NOT_CHECKED_HEADING!r} section. "
+        f"report={str(body.get('report'))[:400]!r}"
+    )
 
 
 def test_a_real_document_is_screened_end_to_end(client: TestClient) -> None:

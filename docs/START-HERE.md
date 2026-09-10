@@ -109,3 +109,7 @@ Now propose what to do next, and wait for me to pick.
 `uv run python tools/demo.py` runs the whole story offline in one command and
 cannot fail on the day. `docs/demonstration.md` has the running order, the
 fallbacks, and the questions to expect.
+
+`docs/how-it-works.html` is the plain-English explanation of every part of the
+system, written for somebody who has to present it rather than maintain it.
+Open it in a browser.
