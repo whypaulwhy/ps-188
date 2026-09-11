@@ -1220,11 +1220,20 @@ that order cannot decide it.
   development laptop: its only inbound firewall rule for Python applied to
   Public networks, and the home network is Private.
 
-**Left open, deliberately.** When a face matches, the officer's finding still
-opens with "An automated check for signs of alteration raised nothing": the Rung
-2 finding templates in `core/trust/policy.py` are shared by every Rung 2
-detector, and that one was written for the tamper check. Changing it is a change
-to `core` and waits for a decision.
+**The headline above a face finding, changed after a decision.** Every Rung 2
+detector shares one pair of finding headlines in `core/trust/policy.py`, and the
+"no concern" one was written for the tamper check, so a matching face and a
+passing liveness check both sat under "An automated check for signs of
+alteration raised nothing". The headlines now name no particular kind of check —
+"An automated check raised no concern. That is not proof of anything on its
+own." — because the detector's own sentences, printed underneath, already say
+what was checked. The codes became `NO_CONCERN_RAISED` and `CONCERN_RAISED`, and
+`POLICY_VERSION` moved to `fail-closed/2` so that cases decided under the old
+wording stay distinguishable; stored cases keep the wording they were decided
+with, and no decision changed. A separate headline per detector was considered
+and not taken: it would make `core` know the names of individual detectors, and
+the rules are written per rung. `make check` with the new test in place:
+**1863 passed**.
 
 **Exit criteria.** A screening from the capture page carries photographs of the
 person to both face checks; a document check examines only the document,

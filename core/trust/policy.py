@@ -14,8 +14,12 @@ from typing import Final
 
 from core.contracts import Decision, Result, Rung, Severity
 
-POLICY_VERSION: Final[str] = "fail-closed/1"
-"""Identifies the resolution rules below. Recorded on every verdict so old cases stay readable."""
+POLICY_VERSION: Final[str] = "fail-closed/2"
+"""Identifies the resolution rules below. Recorded on every verdict so old cases stay readable.
+
+Version 2 changed no decision. It renamed the Rung 2 finding codes and made their
+headlines name no particular kind of check, because every Rung 2 detector shares them.
+"""
 
 DECISION_SEVERITY: Final[Mapping[Decision, int]] = MappingProxyType(
     {
@@ -92,13 +96,12 @@ FINDING_TEMPLATES: Final[Mapping[tuple[Rung, Result], FindingTemplate]] = Mappin
             "The document breaks a fixed rule that every genuine document of this type follows.",
         ),
         (Rung.INFERENCE, Result.NO_FINDING): (
-            "NO_ALTERATION_SIGNAL",
+            "NO_CONCERN_RAISED",
             Severity.INFO,
-            "An automated check for signs of alteration raised nothing. "
-            "This is not proof that the document is genuine.",
+            "An automated check raised no concern. That is not proof of anything on its own.",
         ),
         (Rung.INFERENCE, Result.SUSPICIOUS): (
-            "POSSIBLE_ALTERATION",
+            "CONCERN_RAISED",
             Severity.CONCERN,
             "An automated check noticed something unusual that a person should look at.",
         ),

@@ -40,7 +40,7 @@ Uncertainty always routes to `MANUAL_REVIEW`, never to `CLEARED`.
 
 **Where it stands.** Phases 0–19 done. `make check` is the gate: ruff, `ruff
 format --check`, `mypy --strict core`, `lint-imports`, pytest with `core/` at
-100% branch coverage. At the end of phase 19: **1861 passed, zero
+100% branch coverage. At the end of phase 19: **1863 passed, zero
 skipped.**
 
 **The demonstration is wired end to end.** The capture page photographs the
@@ -220,12 +220,6 @@ document photograph. Run it once end to end and record it.
    staff authenticate.
 
 ### 5. Open questions worth a decision
-
-**The officer wording for a face that matches.** The finding opens with "An
-automated check for signs of alteration raised nothing", because the Rung 2
-finding templates in `core/trust/policy.py` are shared by every Rung 2 detector
-and that one was written for the tamper check. It will be on screen during the
-impostor moment of the demonstration. Fixing it is a change to `core`.
 
 **Neither face threshold has a quotable number behind it.**
 `face_match.SUSPICION_THRESHOLD = 0.33` and `pad_liveness.STILLNESS_THRESHOLD =

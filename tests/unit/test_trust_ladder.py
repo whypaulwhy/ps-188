@@ -487,6 +487,24 @@ def test_the_timestamp_defaults_to_now() -> None:
     assert before <= verdict.decided_at <= after
 
 
+@pytest.mark.parametrize("result", [Result.NO_FINDING, Result.SUSPICIOUS])
+def test_an_inference_headline_names_no_particular_kind_of_check(result: Result) -> None:
+    """Every Rung 2 detector shares one headline, so it must fit all of them.
+
+    It once read "an automated check for signs of alteration raised nothing" above
+    a face that matched the photograph, which is not what a face check looks for.
+    What was checked is said by the detector's own sentences, printed underneath.
+    """
+    reasons = (
+        "The face of the person presenting this document is consistent with the photograph on it.",
+    )
+    finding = decide(evidence(Rung.INFERENCE, result, reasons=reasons)).findings[0]
+
+    assert "alteration" not in finding.headline.lower()
+    assert "alteration" not in finding.code.lower()
+    assert finding.detail == reasons
+
+
 def test_findings_carry_the_standard_that_makes_them_defensible() -> None:
     """A finding an officer acts on can always be traced to a published clause."""
     verdict = decide(evidence(Rung.DETERMINISTIC, Result.FAIL))
