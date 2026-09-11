@@ -90,12 +90,13 @@ def main(argv: list[str]) -> int:
         return 0
 
     moved = pad_liveness.movement(frames)
-    print(f"  movement    {moved:.5f}   (landmark shift, relative to face width)")
+    print(f"  shape change {moved:.5f}   (after removing how the picture moved)")
     print(f"  threshold   {pad_liveness.STILLNESS_THRESHOLD}  <- uncalibrated")
     if moved < pad_liveness.STILLNESS_THRESHOLD:
-        print("  would escalate: True - this looks like a still picture held to the camera")
+        print("  would escalate: True - the face only moved as a whole, like a held picture")
+        print("  If this is a real person, they need to turn their head between frames.")
     else:
-        print("  would escalate: False - the face moved between frames")
+        print("  would escalate: False - the face changed shape, as a turning head does")
         print("  This does not establish a live person. A video replay would move too.")
     return 0
 

@@ -46,28 +46,18 @@ DOCUMENT_ROLE: Final[str] = "document_front"
 SUSPICION_THRESHOLD: Final[float] = 0.33
 """Above this the case is escalated. Equivalent to a similarity below +0.34.
 
-**Still uncalibrated**, and the number is chosen to fail closed rather than to
-be right. Two things inform it, and neither is a calibration:
+**Uncalibrated**, and chosen to fail closed rather than to be right. It sits in
+the region `buffalo_l`, an ArcFace recogniser, is conventionally operated in:
+two pictures of one person well above it, two different people well below.
+That is the model's published character, not a measurement made here.
 
-1. `buffalo_l` is an ArcFace recogniser, whose conventional operating region
-   puts two pictures of the same person well above +0.3 and two people well
-   below it. That is the model's published character, not a measurement made
-   here.
-2. Eight faces available to this project scored between -0.14 and +0.18 against
-   each other across all thirty-six pairs — the spread of *different* people,
-   with no same-person pair among them to check the other side against.
-
-The first value here was 0.55, which required a similarity below -0.10 to
-escalate. Against those thirty-six pairs it escalated two. A threshold that lets
-thirty-four different-person comparisons read as "consistent with the
-photograph" is the impostor attack this detector exists to notice, so it was
-moved.
-
-**What is still unknown is the cost.** Nothing here has ever compared two
-pictures of the same person, so the rate at which this escalates a genuine
-bearer is unmeasured. Erring this way is the correct direction on a rung that
-can only send a case to a person, and it is not a substitute for a labelled
-corpus.
+A local check on the owner's own photographs and a handful of document
+portraits, held outside the repository, was consistent with that - and showed
+that the first value, 0.55, sat so low that different people would have read as
+"consistent with the photograph". It was moved for that reason. **No rate from
+that check is recorded here**, because rule 2 of CLAUDE.md admits only figures
+produced by `eval/run_eval.py` on a named dataset, and that check was not one.
+The false-escalation and missed-impostor rates for this threshold are **TBD**.
 """
 
 MINIMUM_CONFIDENCE: Final[float] = 0.5

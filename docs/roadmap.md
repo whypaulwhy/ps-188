@@ -1039,7 +1039,7 @@ challenge: several frames a moment apart, and the movement of the five facial
 landmarks between them, divided by the width of the face so that holding the
 camera closer does not read as movement.
 
-**It defeats a printed photograph held to a camera. It does not defeat a video
+**As first shipped it did not defeat a printed photograph, despite what this said — see phase 18. It does not defeat a video
 replay**, and the officer wording says so in its own sentence, because somebody
 told "the liveness check passed" will otherwise read more into it than it can
 carry.
@@ -1067,27 +1067,70 @@ so that a person can point the models at images they are entitled to use and see
 the numbers for themselves.
 
 
-### First contact with real faces, and a defect it found
+### First contact with real faces
 
-The face models were run over eleven images supplied by the owner, held outside
-the repository. Eight contained a detectable face, at confidences between 0.75
-and 0.89, which is the first evidence in this project that the recogniser works
-on anything at all — every test before it covered contract compliance only,
-because there is deliberately no face in the corpus.
+The face models were run over images supplied by the owner and held outside the
+repository: document portraits first, then the owner's own photographs from
+several angles. Faces were found in almost all of them, which is the first
+evidence in this project that the recogniser works on anything at all — every
+test before it covered contract compliance only, because there is deliberately
+no face in the corpus.
 
-All thirty-six pairs among those eight scored a similarity between **-0.14 and
-+0.18**: the spread of different people, with no same-person pair among them.
+The check showed that the first `SUSPICION_THRESHOLD`, 0.55, sat so low that
+different people read as "consistent with the photograph" — the impostor attack
+this detector exists to notice. It was moved to 0.33, where ArcFace recognisers
+are conventionally operated. On the owner's own photographs the same person then
+read as consistent with themselves across every angle tried, and document
+portraits were escalated against them.
 
-**`SUSPICION_THRESHOLD` was 0.55, which escalates only below a similarity of
--0.10. Against those thirty-six pairs it escalated two.** A threshold letting
-thirty-four different-person comparisons read as "consistent with the
-photograph" is precisely the impostor attack this detector exists to notice, so
-it was moved to 0.33 — escalating below a similarity of +0.34.
+**That is not a calibration, and no rate from it is recorded here.** Rule 2
+admits only figures `eval/run_eval.py` produces on a named dataset; a one-off
+check on one person's photographs is not one. The false-escalation and
+missed-impostor rates for this threshold are TBD.
 
-**This is still not a calibration**, and the module says so. The new number is
-chosen to fail closed: it is informed by ArcFace's published operating region and
-by the observed spread, and nothing here has ever compared two pictures of the
-same person, so the rate at which it escalates a genuine bearer is unmeasured.
-Erring toward escalation is the correct direction on a rung that can only send a
-case to a person. It is not a substitute for a labelled corpus, and it is the
-first thing to redo when one exists.
+---
+
+## Phase 18 — Liveness that a photograph cannot pass
+
+**Phase 17 shipped a liveness check that a printed photograph defeats**, while
+its own documentation said the opposite. Found by testing the claim rather than
+trusting it.
+
+The first version measured how far the five facial landmarks moved between
+frames. A photograph held in a hand moves every landmark — shake, tilt, drift —
+so it read as a face that moved, and passed. Warps of a still photograph
+imitating a hand-held print, by shift, rotation, scale and a slight perspective
+tilt, all passed it. The only thing it caught was one frame repeated exactly,
+which is not an attack anybody would make.
+
+**What it measures now is change of shape, not change of position.** Each pair of
+frames is aligned by orthogonal Procrustes — translation, rotation and scale
+removed — and what is left is how much the arrangement of eyes, nose and mouth
+changed. A flat photograph keeps its arrangement however it is moved; a real head
+turning in three dimensions projects to a different one. The same simulated
+prints now fall far below the threshold, and the owner's own frames of a turning
+head far above it.
+
+- `detectors/rung2_inference/pad_liveness.py`, version 2.0.0. The version bump
+  matters: `model_version` is part of what the ledger digests.
+- Tests that pin the property rather than examples: moving a face rigidly is not
+  movement; a change of shape is, even while the camera shakes; the measure does
+  not depend on how close the camera was; a mirror image is not the same face;
+  fewer than three landmarks cannot show movement and read as still, which
+  escalates.
+
+**What it still does not defeat**, stated in the officer wording: a video replay,
+and a photograph *bent* between frames, since bending changes its shape. **It has
+not been tried against a real printed photograph filmed by a real camera** —
+paper curvature, glare and focus all differ from a warp. That is the next thing
+to try, and it takes one printed selfie.
+
+**One consequence for the capture page.** The check needs the head to turn. A
+person holding perfectly still is escalated — the safe direction, and a nuisance
+at a barrier — so when the capture page takes live frames it must ask the bearer
+to turn their head slowly.
+
+**A correction to phase 17's follow-up.** That commit recorded pass and escalate
+counts from an ad-hoc local check in `face_match.py` and in this file. Rule 2
+admits no figure that `eval/run_eval.py` did not produce on a named dataset, so
+they have been removed. The check is described, not quantified.
