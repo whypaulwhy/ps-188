@@ -170,7 +170,7 @@ this reason. Turn the server off afterwards.
 Only these. Everything else is invented, whoever says it.
 
 **Counts of code and tests** — safe in any room, and not performance claims:
-1,863 tests passing; 100% branch coverage on `core/`; 5 architecture
+1,864 tests passing; 100% branch coverage on `core/`; 5 architecture
 contracts enforced in CI; 7 architecture decision records; 15 detectors, of
 which 13 are assembled at a checkpoint that holds no hashing key; 11 accepted document
 types, of which only 2 can ever reach `CLEARED`. These were last recounted in

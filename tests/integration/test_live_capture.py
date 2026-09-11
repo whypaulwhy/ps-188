@@ -224,6 +224,13 @@ def test_the_capture_page_photographs_the_person(client: TestClient) -> None:
     assert "live_capture" in text
 
 
+def test_the_capture_page_says_plainly_when_the_checkpoint_cannot_be_reached(
+    client: TestClient,
+) -> None:
+    """A browser's own wording for a lost connection means nothing to an officer."""
+    assert "The checkpoint could not be reached." in client.get("/console/capture").text
+
+
 def test_the_upload_form_takes_photographs_of_the_person(client: TestClient) -> None:
     """The fallback with no network: photographs taken earlier, sent from the laptop."""
     text = client.get("/console/submit").text

@@ -1215,6 +1215,10 @@ that order cannot decide it.
   to that address; how it renders in a particular terminal window is to be seen.
 - `.gitignore` covers `*.sqlite3`. Only `*.db` was ignored, so a case database
   created inside the repository folder could have been committed.
+- When no answer reaches the capture page, it no longer shows the browser's own
+  words ("Failed to fetch"). It says the checkpoint could not be reached and
+  what to check; a refusal from the checkpoint still shows the checkpoint's own
+  sentence. `make check` afterwards: **1864 passed**.
 - `docs/demonstration.md`: the phone section starts the server on the network
   with the face models configured, and records why a phone could not reach the
   development laptop: its only inbound firewall rule for Python applied to

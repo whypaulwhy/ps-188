@@ -424,6 +424,13 @@
     });
     forget();
 
+    // A refusal from the checkpoint carries its own sentence. Anything else means
+    // no answer arrived, and the browser's wording for that ("Failed to fetch")
+    // means nothing to an officer.
+    var UNREACHABLE =
+      "The checkpoint could not be reached. Check that this device is on the same " +
+      "network as the checkpoint, and that the checkpoint is running.";
+
     // Posted to the API from the browser. The console never imports it: an
     // import-linter contract forbids ui/ from reaching api/, and a fetch from
     // a page is not an import.
@@ -431,7 +438,13 @@
       .then(function (response) {
         return response.json().then(function (data) {
           if (!response.ok) {
-            throw new Error(data.detail || ("The checkpoint answered " + response.status + "."));
+            var refusal = new Error(
+              typeof data.detail === "string"
+                ? data.detail
+                : "The checkpoint refused it (" + response.status + ")."
+            );
+            refusal.fromCheckpoint = true;
+            throw refusal;
           }
           return data;
         });
@@ -444,7 +457,8 @@
         var box = document.createElement("div");
         box.className = "failed";
         box.textContent =
-          "This document was not screened: " + error.message +
+          "This document was not screened. " +
+          (error && error.fromCheckpoint ? error.message : UNREACHABLE) +
           " Nothing was recorded. Try again, and tell the supervisor if it keeps happening.";
         result.appendChild(box);
         result.appendChild(again());

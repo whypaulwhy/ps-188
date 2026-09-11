@@ -40,7 +40,7 @@ Uncertainty always routes to `MANUAL_REVIEW`, never to `CLEARED`.
 
 **Where it stands.** Phases 0–19 done. `make check` is the gate: ruff, `ruff
 format --check`, `mypy --strict core`, `lint-imports`, pytest with `core/` at
-100% branch coverage. At the end of phase 19: **1863 passed, zero
+100% branch coverage. At the end of phase 19: **1864 passed, zero
 skipped.**
 
 **The demonstration is wired end to end.** The capture page photographs the
