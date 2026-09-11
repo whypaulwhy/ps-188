@@ -224,6 +224,18 @@ def test_the_capture_page_photographs_the_person(client: TestClient) -> None:
     assert "live_capture" in text
 
 
+def test_the_capture_page_takes_the_person_from_live_video_where_it_can(
+    client: TestClient,
+) -> None:
+    """Live video where the browser allows it, three photographs wherever it does not."""
+    text = client.get("/console/capture").text
+
+    assert "getUserMedia" in text
+    assert 'id="live"' in text
+    assert "Take three photographs instead" in text
+    assert "Only still photographs are sent" in text
+
+
 def test_the_capture_page_says_plainly_when_the_checkpoint_cannot_be_reached(
     client: TestClient,
 ) -> None:

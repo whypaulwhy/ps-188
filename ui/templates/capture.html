@@ -107,6 +107,11 @@
   }
   .shoot:disabled { opacity: 0.55; cursor: default; }
   .shoot.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  .link {
+    display: block; margin: 10px auto 0; padding: 8px;
+    background: none; border: none; color: var(--accent);
+    font: inherit; font-size: 0.9rem; text-decoration: underline; cursor: pointer;
+  }
   button:focus-visible, select:focus-visible, summary:focus-visible {
     outline: 3px solid var(--accent); outline-offset: 2px;
   }
@@ -119,7 +124,17 @@
   }
 
   .prompt { font-size: 1.05rem; font-weight: 600; margin: 0; }
-  .frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .note { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+
+  /* Mirrored, as a person turning their head expects to see themselves. The
+     photographs taken from it are not mirrored. */
+  #live {
+    display: block; width: 100%; max-height: 60vh; object-fit: contain;
+    margin-top: 12px; border-radius: 8px; background: #000;
+    transform: scaleX(-1);
+  }
+
+  .frames { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
   .frames img {
     width: 100%; aspect-ratio: 3 / 4; object-fit: cover;
     border-radius: 8px; border: 1px solid var(--line); display: block;
@@ -226,18 +241,30 @@
     <div class="card" id="person" hidden>
       <h2>2. The person presenting it</h2>
       <p class="prompt" id="prompt"></p>
-      <input type="file" id="face" accept="image/*" capture="user">
-      <button class="shoot" id="face-take" type="button"></button>
+
+      <div id="video-mode" hidden>
+        <video id="live" autoplay playsinline muted aria-label="Live view from the front camera"></video>
+        <button class="shoot" id="video-start" type="button" disabled>Start</button>
+        <button class="link" id="use-photos" type="button">Take three photographs instead</button>
+      </div>
+
+      <div id="photo-mode" hidden>
+        <p class="note" id="fallback-note" hidden></p>
+        <input type="file" id="face" accept="image/*" capture="user">
+        <button class="shoot" id="face-take" type="button"></button>
+      </div>
+
       <div class="frames" id="frames"></div>
       <button class="shoot secondary" id="face-reset" type="button" hidden>
         Take the photographs again
       </button>
 
       <p class="hint">
-        The first photograph is compared with the one on the document. The person
-        turning their head between photographs is how this checks that a real person
-        is in front of the camera and not a picture of one, so someone who keeps
-        perfectly still will be sent to an officer.
+        The first photograph is compared with the one on the document. The head
+        turning between photographs is how this checks that a real person is in front
+        of the camera and not a picture of one, so someone who keeps perfectly still
+        will be sent to an officer. Only still photographs are sent: no video is
+        recorded or kept.
       </p>
     </div>
 
@@ -256,16 +283,31 @@
 (function () {
   "use strict";
 
-  // Three photographs, with the person turning their head between them. The
-  // liveness check measures a change of facial shape, which a flat picture
-  // held up to the camera cannot produce however it is moved.
+  // Photographs of the person, with the head turning between them. The liveness
+  // check measures a change of facial shape, which a flat picture held up to the
+  // camera cannot produce however it is moved.
   var PROMPTS = [
     "Ask them to look straight at the camera.",
     "Now ask them to turn their head a little to one side.",
     "Now a little the other way."
   ];
+
+  // From live video the photographs are taken on cue, a moment apart. The check
+  // compares each photograph with the one before it, so frames a fraction of a
+  // second apart would each show only a fraction of a turn.
+  var CUES = [
+    "Look straight at the camera.",
+    "Turn your head a little to one side.",
+    "Now a little the other way.",
+    "Back to the camera."
+  ];
+  var CUE_WAIT_MS = 1200;
+
   var ENOUGH = 2;
   var LONGEST_EDGE = 1600;
+  var NO_VIDEO_HERE =
+    "Live video is not available on this connection, so take three photographs instead.";
+  var NO_CAMERA = "The camera could not be opened here, so take three photographs instead.";
 
   function byId(id) { return document.getElementById(id); }
 
@@ -276,6 +318,12 @@
   var thumb = byId("thumb");
   var person = byId("person");
   var prompt = byId("prompt");
+  var videoMode = byId("video-mode");
+  var live = byId("live");
+  var videoStart = byId("video-start");
+  var usePhotos = byId("use-photos");
+  var photoMode = byId("photo-mode");
+  var fallbackNote = byId("fallback-note");
   var face = byId("face");
   var faceTake = byId("face-take");
   var faceReset = byId("face-reset");
@@ -288,6 +336,10 @@
   var chosen = null;
   var frames = [];
   var shrinking = false;
+  var mode = null;
+  var stream = null;
+  var opening = false;
+  var capturing = false;
 
   take.addEventListener("click", function () { file.click(); });
 
@@ -299,8 +351,128 @@
     take.classList.add("secondary");
     showDocument(chosen);
     person.hidden = false;
+    if (mode === null) {
+      if (videoPossible()) { startVideo(); } else { usePhotoMode(NO_VIDEO_HERE); }
+    }
     refresh();
   });
+
+  // --- the person, from live video --------------------------------------------
+
+  function videoPossible() {
+    return Boolean(
+      window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+    );
+  }
+
+  function startVideo() {
+    mode = "video";
+    videoMode.hidden = false;
+    photoMode.hidden = true;
+    live.hidden = false;
+    if (stream || opening) { refresh(); return; }
+    opening = true;
+    refresh();
+    navigator.mediaDevices
+      .getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      })
+      .then(function (opened) {
+        opening = false;
+        if (mode !== "video") {
+          opened.getTracks().forEach(function (track) { track.stop(); });
+          return;
+        }
+        stream = opened;
+        stream.getTracks().forEach(function (track) {
+          track.addEventListener("ended", function () {
+            if (stream === opened) { stream = null; refresh(); }
+          });
+        });
+        live.srcObject = stream;
+        live.play().catch(function () {});
+        refresh();
+      })
+      .catch(function () {
+        opening = false;
+        if (mode === "video") { usePhotoMode(NO_CAMERA); }
+      });
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(function (track) { track.stop(); });
+      stream = null;
+    }
+    live.srcObject = null;
+  }
+
+  live.addEventListener("playing", refresh);
+
+  videoStart.addEventListener("click", function () {
+    if (capturing) { return; }
+    if (!stream) { startVideo(); return; }
+    runCapture();
+  });
+
+  usePhotos.addEventListener("click", function () { usePhotoMode(""); });
+
+  function runCapture() {
+    capturing = true;
+    clearFrames();
+    refresh();
+    var step = 0;
+
+    function next() {
+      if (mode !== "video" || !stream) {
+        capturing = false;
+        refresh();
+        return;
+      }
+      if (step >= CUES.length) {
+        capturing = false;
+        stopCamera();
+        live.hidden = true;
+        refresh();
+        return;
+      }
+      prompt.textContent = CUES[step];
+      videoStart.textContent = "Taking photograph " + (step + 1) + " of " + CUES.length;
+      setTimeout(function () {
+        grab().then(function (photograph) {
+          if (photograph && mode === "video") { addFrame(photograph); }
+          step += 1;
+          next();
+        });
+      }, CUE_WAIT_MS);
+    }
+
+    next();
+  }
+
+  function grab() {
+    if (!stream || !live.videoWidth) { return Promise.resolve(null); }
+    var scale = Math.min(1, LONGEST_EDGE / Math.max(live.videoWidth, live.videoHeight));
+    var canvas = document.createElement("canvas");
+    canvas.width = Math.round(live.videoWidth * scale);
+    canvas.height = Math.round(live.videoHeight * scale);
+    canvas.getContext("2d").drawImage(live, 0, 0, canvas.width, canvas.height);
+    return new Promise(function (resolve) { canvas.toBlob(resolve, "image/jpeg", 0.9); });
+  }
+
+  // --- the person, from three photographs -------------------------------------
+
+  function usePhotoMode(note) {
+    stopCamera();
+    mode = "photos";
+    videoMode.hidden = true;
+    photoMode.hidden = false;
+    fallbackNote.textContent = note;
+    fallbackNote.hidden = !note;
+    clearFrames();
+    refresh();
+  }
 
   faceTake.addEventListener("click", function () {
     if (!shrinking) { face.click(); }
@@ -312,67 +484,14 @@
     if (!picked || frames.length >= PROMPTS.length) { return; }
     shrinking = true;
     faceTake.disabled = true;
+    refresh();
     shrink(picked).then(function (photograph) {
-      frames.push(photograph);
-      var shown = document.createElement("img");
-      shown.src = URL.createObjectURL(photograph);
-      shown.alt = "Photograph " + frames.length + " of the person";
-      framesBox.appendChild(shown);
+      addFrame(photograph);
       shrinking = false;
       faceTake.disabled = false;
       refresh();
     });
   });
-
-  faceReset.addEventListener("click", function () {
-    clearFrames();
-    refresh();
-  });
-
-  function showDocument(picked) {
-    if (thumb.src) { URL.revokeObjectURL(thumb.src); }
-    if (picked && picked.type.indexOf("image/") === 0) {
-      thumb.src = URL.createObjectURL(picked);
-      preview.hidden = false;
-    } else {
-      thumb.removeAttribute("src");
-      preview.hidden = true;
-    }
-  }
-
-  function clearFrames() {
-    frames = [];
-    Array.prototype.forEach.call(framesBox.querySelectorAll("img"), function (shown) {
-      URL.revokeObjectURL(shown.src);
-    });
-    framesBox.textContent = "";
-  }
-
-  function refresh() {
-    var taken = frames.length;
-    if (taken < PROMPTS.length) {
-      prompt.textContent = PROMPTS[taken];
-      faceTake.textContent = "Take photograph " + (taken + 1) + " of " + PROMPTS.length;
-      faceTake.hidden = false;
-      faceTake.classList.toggle("secondary", taken >= ENOUGH);
-    } else {
-      prompt.textContent = "All " + PROMPTS.length + " photographs taken.";
-      faceTake.hidden = true;
-    }
-    faceReset.hidden = taken === 0;
-
-    send.hidden = chosen === null;
-    if (taken >= ENOUGH) {
-      send.textContent = "Screen this document";
-      send.classList.remove("secondary");
-    } else if (taken === 1) {
-      send.textContent = "Screen with only one photograph of the person";
-      send.classList.add("secondary");
-    } else {
-      send.textContent = "Screen without photographing the person";
-      send.classList.add("secondary");
-    }
-  }
 
   // The document is sent exactly as taken, because its compression traces are
   // what the tamper check reads. Photographs of the person carry no such
@@ -398,8 +517,97 @@
     });
   }
 
-  // Once a screening is sent the page has no further use for the photographs.
+  // --- shared ------------------------------------------------------------------
+
+  faceReset.addEventListener("click", function () {
+    clearFrames();
+    if (mode === "video") { startVideo(); } else { refresh(); }
+  });
+
+  function showDocument(picked) {
+    if (thumb.src) { URL.revokeObjectURL(thumb.src); }
+    if (picked && picked.type.indexOf("image/") === 0) {
+      thumb.src = URL.createObjectURL(picked);
+      preview.hidden = false;
+    } else {
+      thumb.removeAttribute("src");
+      preview.hidden = true;
+    }
+  }
+
+  function addFrame(photograph) {
+    frames.push(photograph);
+    var shown = document.createElement("img");
+    shown.src = URL.createObjectURL(photograph);
+    shown.alt = "Photograph " + frames.length + " of the person";
+    framesBox.appendChild(shown);
+  }
+
+  function clearFrames() {
+    frames = [];
+    Array.prototype.forEach.call(framesBox.querySelectorAll("img"), function (shown) {
+      URL.revokeObjectURL(shown.src);
+    });
+    framesBox.textContent = "";
+  }
+
+  function refresh() {
+    var taken = frames.length;
+
+    if (mode === "video") {
+      if (!capturing) {
+        if (taken >= CUES.length) {
+          prompt.textContent = "All " + CUES.length + " photographs taken.";
+        } else if (opening) {
+          prompt.textContent = "Opening the camera...";
+        } else if (!stream) {
+          prompt.textContent = "The camera is off.";
+        } else {
+          prompt.textContent =
+            "Turn the screen towards the person and press Start. " +
+            "They follow the instructions that appear here.";
+        }
+        videoStart.textContent = stream ? "Start" : "Turn the camera on";
+      }
+      videoStart.hidden = !capturing && taken >= CUES.length;
+      videoStart.disabled = capturing || opening || (stream !== null && !live.videoWidth);
+      usePhotos.hidden = capturing || taken >= CUES.length;
+    } else if (mode === "photos") {
+      if (taken < PROMPTS.length) {
+        prompt.textContent = PROMPTS[taken];
+        faceTake.textContent = "Take photograph " + (taken + 1) + " of " + PROMPTS.length;
+        faceTake.hidden = false;
+        faceTake.classList.toggle("secondary", taken >= ENOUGH);
+      } else {
+        prompt.textContent = "All " + PROMPTS.length + " photographs taken.";
+        faceTake.hidden = true;
+      }
+    }
+    faceReset.hidden = taken === 0 || capturing;
+
+    send.hidden = chosen === null;
+    send.disabled = capturing || shrinking;
+    if (taken >= ENOUGH) {
+      send.textContent = "Screen this document";
+      send.classList.remove("secondary");
+    } else if (taken === 1) {
+      send.textContent = "Screen with only one photograph of the person";
+      send.classList.add("secondary");
+    } else {
+      send.textContent = "Screen without photographing the person";
+      send.classList.add("secondary");
+    }
+  }
+
+  // Once a screening is sent the page has no further use for the photographs,
+  // and the camera is switched off.
   function forget() {
+    stopCamera();
+    mode = null;
+    videoMode.hidden = true;
+    photoMode.hidden = true;
+    live.hidden = false;
+    fallbackNote.hidden = true;
     chosen = null;
     file.value = "";
     showDocument(null);
@@ -411,7 +619,7 @@
   }
 
   send.addEventListener("click", function () {
-    if (!chosen || shrinking) { return; }
+    if (!chosen || shrinking || capturing) { return; }
     intake.hidden = true;
     result.hidden = true;
     working.hidden = false;

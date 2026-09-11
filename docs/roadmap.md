@@ -1243,3 +1243,56 @@ the rules are written per rung. `make check` with the new test in place:
 person to both face checks; a document check examines only the document,
 whatever else arrives with it; and a case screened without photographs of the
 person still says so.
+
+---
+
+## Phase 20 — The person, from live video
+
+Phase 19 photographed the person with three taps of the phone's camera app. This
+phase takes them from live video in the page where the browser allows it, and
+keeps the three photographs wherever it does not.
+
+- `/console/capture`: after the document, the page opens the front camera and
+  shows a live preview. When Start is pressed it takes four photographs about a
+  second apart, changing the instruction just before each — look at the camera;
+  turn your head a little to one side; now a little the other way; back to the
+  camera. The camera is switched off as soon as the fourth is taken.
+- **On cue, not a burst.** The liveness check compares each photograph with the
+  one before it. Frames a fraction of a second apart would each show a fraction
+  of a turn, and a real person turning slowly could be escalated. Taken on cue,
+  each photograph differs from the last by a deliberate movement, which is what
+  the three photographs already gave the check. No detector changed.
+- **Where video is not allowed, nothing is lost.** A phone browser allows live
+  video only over a secure connection, and plain `http://` over Wi-Fi is not one.
+  There, or when the camera cannot be opened, the page says so in one line and
+  asks for three photographs instead. The officer can also choose them at any
+  time.
+- **Nothing new is sent or stored.** The four photographs travel exactly as the
+  three did, as `live_capture` artefacts. No video is recorded, and the server is
+  unchanged.
+- For the phone, `docs/demonstration.md` describes a USB cable with Chrome's port
+  forwarding: the phone opens `http://localhost:8188`, which a browser treats as
+  secure, so live video works with no certificate and no network.
+
+**What it is not.** This is the phase 18 liveness check, fed automatically from
+live video. It is not an anti-spoofing model, and a recording played to the
+camera can still pass it; the officer wording already says so.
+
+### Verified
+
+- `make check`: **1865 passed**.
+- In a desktop browser, with the camera replaced by a generated moving picture:
+  the page chose live video on a secure connection; the four photographs were
+  taken about 1.2 seconds apart; the camera stopped after the fourth; the
+  screening sent the document and four photographs of the person; and the page
+  dropped them afterwards. A refused camera, the officer choosing photographs,
+  and a connection with no live video each fell back to three photographs with
+  the right note. Sending was intercepted in the page, so nothing was screened.
+- **Not verified: a real face**, on a laptop webcam or on the phone. Whether a
+  real head turning on cue passes the liveness check from video frames is the
+  first thing to try — on the laptop at `http://127.0.0.1:8188/console/capture`,
+  then on the phone over USB.
+
+**Exit criteria.** Where the browser allows live video, the person step takes
+four photographs on cue and switches the camera off; where it does not, the
+three photographs remain; and nothing but still photographs leaves the page.

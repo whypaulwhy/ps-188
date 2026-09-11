@@ -18,7 +18,7 @@ and `make check` passes, and tell me the real numbers rather than the ones
 written down.
 
 **Do not re-explore the repository, re-run the demo, or re-audit anything.** It
-was audited twice on 2026-09-10 and everything below is current as of phase 19
+was audited twice on 2026-09-10 and everything below is current as of phase 20
 (2026-09-11). Start from "What is left" at the bottom of this file.
 
 Here is what you need to know so I do not have to explain it again.
@@ -38,15 +38,17 @@ learning, and it can only ever push a case *toward* a human or a rejection — i
 can never clear one, whatever it scores. Rung 3 is advisory and decides nothing.
 Uncertainty always routes to `MANUAL_REVIEW`, never to `CLEARED`.
 
-**Where it stands.** Phases 0–19 done. `make check` is the gate: ruff, `ruff
+**Where it stands.** Phases 0–20 done. `make check` is the gate: ruff, `ruff
 format --check`, `mypy --strict core`, `lint-imports`, pytest with `core/` at
-100% branch coverage. At the end of phase 19: **1864 passed, zero
+100% branch coverage. At the end of phase 20: **1865 passed, zero
 skipped.**
 
 **The demonstration is wired end to end.** The capture page photographs the
-document and then the person, and both face checks receive the photographs. What
-remains is trying it on a real phone, the printed-photograph test, and a
-rehearsal. See "What is left".
+document and then the person — four photographs on cue from live video where the
+browser allows it, otherwise three photographs — and both face checks receive
+them. The phone has been confirmed working with the three photographs. What
+remains is trying the live video with a real face, the printed-photograph test,
+and a rehearsal. See "What is left".
 
 **What is deliberately absent, and must never be quietly filled in.** No real
 document has ever been screened. Aadhaar Secure QR is a stub because there is no
@@ -87,7 +89,12 @@ tracks, so the test count changes when a new file is staged; for the phone, the
 server must be started with `--host 0.0.0.0`, and a Windows firewall rule applies
 only to the network profile it names — on this laptop the only inbound rule for
 Python covered Public networks and the home Wi-Fi is Private, so a phone's
-requests were silently dropped (`docs/demonstration.md`, Plan B, has the rule).
+requests were silently dropped (`docs/demonstration.md`, Plan B, has the rule);
+**commands for me must work from a fresh PowerShell window** — always include
+`cd "D:\ps 188"` and the settings, never "the same window"; a second server on
+port 8188 fails with `[Errno 10048]` because the first is still running; the
+in-app browser pane slows timers while it is hidden, so timing checks there need
+it visible.
 
 **Demo files never go in the repository.** Document images, face photographs and
 case databases live in `D:\sentinel-local`. Committing one would contradict the
@@ -106,7 +113,7 @@ Now read "What is left" below, propose what to do next, and wait for me to pick.
 | | |
 |---|---|
 | `uv run python tools/demo.py` | the whole story offline, ~15s, no network |
-| `/console/capture` | phone-first: the document, then three photographs of the person; renders the verdict inline. Driven in a desktop browser, **not yet on a phone** |
+| `/console/capture` | phone-first: the document, then the person — from live video (four photographs on cue) where the browser allows it, otherwise three photographs; renders the verdict inline. Three photographs confirmed on my phone; live video driven only with a simulated camera |
 | `/console/submit` | plain file upload, no JavaScript; also takes photographs of the person |
 | `python -m api.publish_checkpoint --out DIR [--since PREV.json]` | signed checkpoints |
 | `python tools/verify_checkpoint.py A.json B.json` | what a **third party** runs |
@@ -141,19 +148,26 @@ Now read "What is left" below, propose what to do next, and wait for me to pick.
 
 ### Environment for a full-capability run
 
+From a **fresh** PowerShell window:
+
 ```powershell
+cd "D:\ps 188"
 $env:SENTINELID_DB_URL = "sqlite:///D:/sentinel-local/demo.sqlite3"
 $env:SENTINELID_CHECKPOINT_ID = "DEMO-POST-01"
 $env:SENTINELID_FACE_MODEL_ROOT = "C:\Users\user\.insightface"
+uv run alembic upgrade head
+uv run uvicorn api.app:create_app --factory --host 0.0.0.0 --port 8188
 ```
 
 Optional and each stated on every case when absent:
 `SENTINELID_LEDGER_KEY_FILE`, `SENTINELID_HASH_KEY_FILE`,
 `SENTINELID_TRUST_ANCHORS_FILE`, `SENTINELID_RETENTION_POLICY_FILE`.
 
-For the phone, `docs/demonstration.md` Plan B has the whole sequence: a firewall
-rule once, the server on `--host 0.0.0.0`, then `tools/demo_preflight.py`. It
-needs a local network but **no internet** — a phone hotspot with no data works.
+On the laptop itself the capture page is `http://127.0.0.1:8188/console/capture`,
+where live video works with the webcam. For the phone, `docs/demonstration.md`
+Plan B has both routes: Wi-Fi (a firewall rule once, then
+`tools/demo_preflight.py`; three photographs) and a USB cable (Chrome's port
+forwarding; live video). Neither needs the internet.
 
 Face models are already downloaded to `C:\Users\user\.insightface\models\buffalo_l`
 (det_10g, w600k_r50, 2d106det, 1k3d68, genderage). There is a redundant 275 MB
@@ -163,27 +177,27 @@ Face models are already downloaded to `C:\Users\user\.insightface\models\buffalo
 
 ## What is left
 
-### 1. Try it on the phone — this is the next job
+### 1. Try live video with a real face — this is the next job
 
-The capture page has been driven in a desktop browser with generated images, and
-the pipeline behind it on my own photographs, but **never on a phone with a real
-camera**. Follow `docs/demonstration.md`, Plan B, then check:
+The live-video step has been driven only with a simulated camera. With a real
+face, first on the laptop at `http://127.0.0.1:8188/console/capture` (the webcam
+works there as it is), then on the phone over USB (`docs/demonstration.md`):
 
-- the second step opens the **front** camera, and the instruction changes
-  between photographs;
-- the page is still there when the camera closes. Some Android phones reload a
-  browser tab while the camera app is open, which would lose the photographs
-  taken so far — better found now than in front of a judge;
-- the result lists the face checks under *What was found*, not under *What was
-  not checked*;
-- the QR code from `tools/demo_preflight.py` scans from the laptop screen.
+- turning as the page instructs should pass the liveness check;
+- holding perfectly still should be escalated;
+- over Wi-Fi the phone should fall back to three photographs, saying why;
+- the result should list the face checks under *What was found*, not under
+  *What was not checked*.
+
+If a real person turning on cue is escalated, stop and look at why before
+changing anything — the liveness check compares each photograph with the one
+before it, and the cue timing is what makes those differences large.
 
 ### 2. Then: two tests with a real printed photograph
 
 Liveness v2 has been verified against warps of a still photograph, **not against
 a real printed photograph filmed by a real camera** — paper curvature, glare and
-focus all differ. Print a selfie on paper and, using the capture page's
-photographs-of-the-person step, try:
+focus all differ. Print a selfie on paper and, using the person step, try:
 
 - holding it still — should escalate;
 - moving and tilting it in the hand — should escalate;
@@ -192,9 +206,9 @@ photographs-of-the-person step, try:
 
 ### 3. Then: rehearse
 
-`docs/demonstration.md` Plan B (the phone) was rewritten in phase 19; its running
-order and Plan A still predate phases 16–18. A proposed running order, **not yet
-agreed**:
+`docs/demonstration.md` Plan B (the phone) was rewritten in phases 19 and 20; its
+running order and Plan A still predate phases 16–18. A proposed running order,
+**not yet agreed**:
 
 1. The signed specimen card → Cleared; the edited copy → Rejected.
 2. A card with an invented Aadhaar number → Rejected.
@@ -241,8 +255,8 @@ sounds. Fixing it means new specimens, not a new detector.
   aggregation. Deleting it is a legitimate outcome, ten minutes.
 - `template_geometry.py`, scoped to the ICAO TD3 zone only. Deferred with a
   documented reason.
-- Automatic photographs of the person from live video in the page, instead of
-  three taps. Needs `https://` on the local network; not attempted.
+- A self-signed HTTPS certificate for live video over Wi-Fi, only if the USB
+  route fails on this laptop. It would put a certificate warning on the phone.
 - Authentication, once §4.5 has an answer.
 - The written SIH submission. **Rule 2 applies to slides.**
 
@@ -252,7 +266,7 @@ sounds. Fixing it means new specimens, not a new detector.
 
 1. `CLAUDE.md` — the contract.
 2. This file.
-3. `docs/roadmap.md`, phases 16–19.
+3. `docs/roadmap.md`, phases 16–20.
 4. `docs/demonstration.md` when the demo is the subject.
 5. `docs/how-it-works.html` is the plain-English explanation, for presenting
-   rather than maintaining. Open it in a browser. It predates phases 16–19.
+   rather than maintaining. Open it in a browser. It predates phases 16–20.

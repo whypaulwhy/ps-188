@@ -127,16 +127,40 @@ uv run python tools/demo_preflight.py
 
 ### What the phone page does
 
-`/console/capture` photographs the document, then the person presenting it, three
-times, with an instruction before each: look at the camera; turn your head a
-little to one side; a little the other way. The first photograph is compared with
-the portrait on the document, and the change between them is the liveness check.
+`/console/capture` photographs the document, then the person presenting it.
+Where the browser allows live video, the page shows the front camera and, when
+Start is pressed, takes four photographs a second apart while it tells the
+person to look at the camera, turn a little to one side, a little the other way,
+and back. Where it does not — a phone over Wi-Fi — it asks for three photographs
+instead, with the same instructions. The first photograph is compared with the
+portrait on the document, and the change between them is the liveness check.
 **A person who holds perfectly still is sent to an officer**, so say the
-instruction out loud as well.
+instruction out loud as well. Only still photographs are sent; no video is
+recorded.
 
 Photograph the document **flat on the table, with no real face in the frame.**
 The face check uses the largest face in the document photograph, so a card held
 up in front of somebody compares them with themselves.
+
+### Live video on the phone: a USB cable
+
+A phone browser allows live video only over a secure connection, and plain
+`http://` over Wi-Fi is not one, so over Wi-Fi the page falls back to three
+photographs by itself. On an Android phone a USB cable makes the page count as
+the laptop's own, and needs no network at all:
+
+1. On the phone, turn on Developer options (Settings → About phone → tap
+   **Build number** seven times; on some phones it is under Software
+   information), then turn on **USB debugging** in Developer options.
+2. Connect the phone to the laptop, and allow the prompt that appears on it.
+3. On the laptop, open Chrome at `chrome://inspect/#devices`. Tick **Discover
+   USB devices**, open **Port forwarding**, add port `8188` to
+   `localhost:8188`, and tick **Enable port forwarding**. Keep that tab open.
+4. On the phone, open `http://localhost:8188/console/capture`, and allow the
+   camera when asked.
+
+If the phone never appears in `chrome://inspect`, Windows may need the phone
+maker's USB driver. Find that out at home, not at the venue.
 
 ### If the phone cannot connect
 
@@ -170,7 +194,7 @@ this reason. Turn the server off afterwards.
 Only these. Everything else is invented, whoever says it.
 
 **Counts of code and tests** — safe in any room, and not performance claims:
-1,864 tests passing; 100% branch coverage on `core/`; 5 architecture
+1,865 tests passing; 100% branch coverage on `core/`; 5 architecture
 contracts enforced in CI; 7 architecture decision records; 15 detectors, of
 which 13 are assembled at a checkpoint that holds no hashing key; 11 accepted document
 types, of which only 2 can ever reach `CLEARED`. These were last recounted in

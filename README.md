@@ -178,9 +178,10 @@ sign one with a key it made up at start-up.
 
 An officer submits a document at `/console/submit`. The form carries
 `capture="environment"`, so on a phone it opens the camera directly.
-`/console/capture` is the phone-first version: the document, then two or three
-photographs of the person presenting it, for the face comparison and the
-liveness check.
+`/console/capture` is the phone-first version: the document, then the person
+presenting it — four photographs taken on cue from live video where the browser
+allows it, otherwise two or three taken with the camera — for the face
+comparison and the liveness check.
 
 ### Seeing it work without running anything
 
