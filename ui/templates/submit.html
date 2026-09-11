@@ -31,6 +31,17 @@
   </p>
 
   <p>
+    <label for="live_capture">Photographs of the person presenting it (optional)</label><br>
+    <input type="file" id="live_capture" name="live_capture" accept="image/*" multiple>
+  </p>
+  <p class="rule">
+    Two or more, taken a moment apart while the person turns their head a little.
+    They are compared with the photograph on the document, and used to check that a
+    real person was in front of the camera rather than a picture of one. Without
+    them, the case says the person was not checked.
+  </p>
+
+  <p>
     <label for="declared_type">What the document claims to be</label><br>
     <select id="declared_type" name="declared_type">
       {% for kind in types %}

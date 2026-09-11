@@ -28,11 +28,21 @@ nothing wrong" can always be distinguished from "we could not look".
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Final
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.contracts.provenance import Provenance
+
+DOCUMENT_ROLE: Final[str] = "document_front"
+"""The artefact every check about the document reads, and the only one.
+
+A check that chose its input as "the first image" or "the first PDF" could be
+handed a photograph of the person, or a signed file that was never the document.
+"""
+
+LIVE_CAPTURE_ROLE: Final[str] = "live_capture"
+"""A photograph of the person presenting the document, taken at the checkpoint."""
 
 
 class DocumentType(StrEnum):

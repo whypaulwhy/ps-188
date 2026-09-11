@@ -178,6 +178,9 @@ sign one with a key it made up at start-up.
 
 An officer submits a document at `/console/submit`. The form carries
 `capture="environment"`, so on a phone it opens the camera directly.
+`/console/capture` is the phone-first version: the document, then two or three
+photographs of the person presenting it, for the face comparison and the
+liveness check.
 
 ### Seeing it work without running anything
 
@@ -197,7 +200,7 @@ officer would read. **Nothing about it can fail on the day.**
 |---|---|
 | `tools/demo.py` | the whole story, offline, in one command |
 | `tools/verify_checkpoint.py` | what a **third party** runs. Imports nothing from this project; needs only `cryptography` |
-| `tools/demo_preflight.py` | why a phone on the same network cannot reach the console, when it cannot |
+| `tools/demo_preflight.py` | why a phone on the same network cannot reach the console, when it cannot, and a QR code of the address to scan |
 | `python -m api.publish_checkpoint --out DIR [--since PREV.json]` | write a signed checkpoint out for transfer |
 | `python -m api.retention_job [--dry-run]` | destroy case records past their retention window |
 

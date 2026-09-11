@@ -72,44 +72,79 @@ and let them run it on their own laptop, with yours closed.
 
 ---
 
-## Plan B — the live console, if a judge wants to submit something
+## Plan B — the live console and the phone
 
-Only if it is asked for. It needs a server, and a phone needs the network.
+The demonstration with a document and a person in front of the room. It needs a
+server, and a local network between the phone and the laptop. **It does not need
+the internet**: nothing leaves the laptop, so a phone hotspot with no mobile data
+left works.
+
+### Once per laptop
+
+In an **Administrator** PowerShell, open the port on Private networks:
+
+```powershell
+New-NetFirewallRule -DisplayName "SENTINEL ID demo 8188" -Direction Inbound -LocalPort 8188 -Protocol TCP -Action Allow -Profile Private
+```
+
+A firewall rule applies only to the network profile it names. On the development
+laptop the only rule letting Python accept connections covered *Public*
+networks, so on the Private home network a phone's request was silently dropped.
+
+### On the day
+
+1. Put the laptop and the phone on the same hotspot. On the laptop, set that
+   network to **Private** (Settings → Network & internet → Wi-Fi → the network →
+   Private network), so the rule above applies to it.
+2. Start the server, and leave the window open — closing it stops the server:
 
 ```powershell
 cd "D:\ps 188"
 $env:SENTINELID_DB_URL = "sqlite:///D:/sentinel-local/demo.sqlite3"
 $env:SENTINELID_CHECKPOINT_ID = "DEMO-POST-01"
+$env:SENTINELID_FACE_MODEL_ROOT = "C:\Users\user\.insightface"
 uv run alembic upgrade head
-uv run uvicorn api.app:create_app --factory --port 8188
+uv run uvicorn api.app:create_app --factory --host 0.0.0.0 --port 8188
 ```
 
-Leave that window open — closing it stops the server. Then open
-`http://127.0.0.1:8188/console/submit` **on the laptop**, and drag a file in.
+   `uv run alembic upgrade head` is not optional: without it every page fails
+   with `no such table: case_record`. Without the face-model line, every case
+   says the face checks are not installed.
 
-`uv run alembic upgrade head` is not optional. Without it, every page fails with
-`no such table: case_record`.
-
-### Only if the phone is genuinely needed
-
-Use `--host 0.0.0.0` instead of the default, then:
+3. In a second window:
 
 ```powershell
 cd "D:\ps 188"
 uv run python tools/demo_preflight.py
 ```
 
-It prints the exact address to type on the phone and tells you which of the
-three failure modes you have, because from the phone they all look identical.
+   It says which of the usual causes it is if the phone cannot connect, prints
+   the address, and draws it as a QR code for the phone's camera. It must be
+   `http://`, never `https://`: there is no TLS.
 
-Two things that will bite:
+4. **Screen one throwaway document before the audience arrives.** The first
+   screening after the server starts loads the face models and is slow.
 
-- **It must be `http://`, never `https://`.** There is no TLS. Browsers
-  increasingly force https and then fail silently.
-- **Windows Firewall blocks the port** until an Administrator PowerShell runs
-  the `New-NetFirewallRule` line that the preflight tool prints. The rule must
-  match the network's profile: a `Private` rule does nothing on a network
-  Windows has classified `Public`.
+### What the phone page does
+
+`/console/capture` photographs the document, then the person presenting it, three
+times, with an instruction before each: look at the camera; turn your head a
+little to one side; a little the other way. The first photograph is compared with
+the portrait on the document, and the change between them is the liveness check.
+**A person who holds perfectly still is sent to an officer**, so say the
+instruction out loud as well.
+
+Photograph the document **flat on the table, with no real face in the frame.**
+The face check uses the largest face in the document photograph, so a card held
+up in front of somebody compares them with themselves.
+
+### If the phone cannot connect
+
+| What happened | What to do |
+|---|---|
+| The page never loads | Run the preflight tool. From the phone every cause looks identical; from the laptop they do not. |
+| The hotspot will not let the phone reach the laptop | Some hotspots keep the devices on them apart. Turn the hotspot on on the phone you are demonstrating with, and join the laptop to it: the phone is then the router, and it still needs no data. |
+| No network at all | Take the photographs with the phone's own camera app, copy them to the laptop, and open `http://127.0.0.1:8188/console/submit` there. It takes the document and the photographs of the person. |
 
 **Say plainly that this mode has no authentication.** Anyone on that network can
 screen documents and record decisions under any name. It is a demonstration
@@ -135,9 +170,11 @@ this reason. Turn the server off afterwards.
 Only these. Everything else is invented, whoever says it.
 
 **Counts of code and tests** — safe in any room, and not performance claims:
-1,680 tests passing; 100% branch coverage on `core/`; 5 architecture contracts
-enforced in CI; 7 architecture decision records; 13 detectors assembled at
-runtime; 11 accepted document types, of which only 2 can ever reach `CLEARED`.
+1,861 tests passing; 100% branch coverage on `core/`; 5 architecture
+contracts enforced in CI; 7 architecture decision records; 15 detectors, of
+which 13 are assembled at a checkpoint that holds no hashing key; 11 accepted document
+types, of which only 2 can ever reach `CLEARED`. These were last recounted in
+phase 19. Recount before saying them if anything has changed since.
 
 **The one evaluation that exists**, `eval/reports/synthetic-utopia-v1`, on
 documents this repository generated: the classical tamper detector escalated 0%

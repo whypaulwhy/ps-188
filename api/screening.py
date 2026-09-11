@@ -183,6 +183,7 @@ def screen(
     deployment: Deployment,
     decided_at: datetime.datetime,
     declared_type: DocumentType = DocumentType.UNRECOGNISED,
+    live_captures: tuple[tuple[bytes, str], ...] = (),
 ) -> tuple[Subject, Verdict]:
     """Screen one capture and resolve it into a verdict.
 
@@ -193,13 +194,20 @@ def screen(
         decided_at: The instant stamped on the verdict, so every record of this
             case agrees about when it happened.
         declared_type: What the document claims to be, when that is known.
+        live_captures: Photographs of the person presenting it, each with its
+            media type, in the order they were taken.
 
     Returns:
         The extracted subject and the verdict. Never raises on account of the
         capture: an unreadable file produces a subject with no zones, a stated
         reason, and a `MANUAL_REVIEW`.
     """
-    subject = build_subject(captured, provenance=provenance, declared_type=declared_type)
+    subject = build_subject(
+        captured,
+        provenance=provenance,
+        declared_type=declared_type,
+        live_captures=live_captures,
+    )
     evidence = run_detectors(assemble(deployment), subject)
     verdict = resolve(evidence, provenance=provenance, decided_at=decided_at)
     return subject, _with_deployment_notices(verdict, deployment)

@@ -6,17 +6,21 @@ none of them is allowed to guess.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 
+from core.contracts import DOCUMENT_ROLE, LIVE_CAPTURE_ROLE
 from datagen.synthetic_docs import generate_specimen
 from extraction.mrz_locate import locate_mrz
 from extraction.ocr_adapter import read_mrz, tesseract_path, well_formed_strip
+from extraction.pipeline import build_subject
 from extraction.preprocess import decode, normalise
 from extraction.qr_decode import decode_qr, decoder_available
+from tests.support import provenance
 
 SPECIMEN = generate_specimen(seed=1)
 
@@ -177,3 +181,36 @@ def test_a_reader_is_found_even_when_it_is_not_on_the_path() -> None:
 
     assert resolved is not None
     assert Path(resolved).is_file()
+
+
+# ---------------------------------------------------------------------------
+# Photographs of the person travel with the document, and nothing is read from them
+# ---------------------------------------------------------------------------
+
+
+def test_photographs_of_the_person_travel_after_the_document_in_order() -> None:
+    """The face check compares the first photograph, so the order they were taken must survive."""
+    subject = build_subject(
+        SPECIMEN.png,
+        provenance=provenance(media_type="image/png"),
+        live_captures=((b"first", "image/jpeg"), (b"second", "image/jpeg")),
+    )
+
+    assert [artefact.role for artefact in subject.artefacts] == [
+        DOCUMENT_ROLE,
+        LIVE_CAPTURE_ROLE,
+        LIVE_CAPTURE_ROLE,
+    ]
+    assert [artefact.data for artefact in subject.artefacts[1:]] == [b"first", b"second"]
+    assert subject.artefacts[1].sha256 == hashlib.sha256(b"first").hexdigest()
+
+
+def test_an_unreadable_document_still_carries_the_photographs() -> None:
+    """The face checks can still say what they found when the document cannot be read."""
+    subject = build_subject(
+        b"this is not a png",
+        provenance=provenance(),
+        live_captures=((b"first", "image/jpeg"),),
+    )
+
+    assert [artefact.role for artefact in subject.artefacts] == [DOCUMENT_ROLE, LIVE_CAPTURE_ROLE]

@@ -108,6 +108,22 @@ def windows_network_category() -> str | None:
     return category or None
 
 
+def print_code(url: str) -> None:
+    """Draw an address as a QR code, so nobody has to type an IP address into a phone.
+
+    Args:
+        url: The address to encode.
+    """
+    import segno
+
+    # On Windows segno writes to the console directly, so flush to keep the order.
+    sys.stdout.flush()
+    try:
+        segno.make_qr(url).terminal()
+    except (OSError, UnicodeError):
+        print("  (The code could not be drawn in this window. Type the address instead.)")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Report whether a phone could reach this checkpoint, and what to fix."""
     parser = argparse.ArgumentParser(
@@ -147,8 +163,12 @@ def main(argv: list[str] | None = None) -> int:
         print("  uv run uvicorn api.app:create_app --factory --host 0.0.0.0 --port " + str(port))
         return 1
 
+    capture = f"http://{address}:{port}/console/capture"
     print(f"\nThis machine can reach itself at {address}:{port}.")
-    print(f"On the phone, open:  http://{address}:{port}/console/submit")
+    print(f"On the phone, open:  {capture}")
+    print("  or point the phone's camera at this code:\n")
+    print_code(capture)
+    print(f"\n  The plain upload page, with no camera step: http://{address}:{port}/console/submit")
     print("  Note http, not https. There is no TLS here and https will not connect.")
 
     if platform.system() == "Windows":

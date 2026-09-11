@@ -52,6 +52,7 @@ def record_capture(
     now: datetime.datetime,
     media_type: str | None = None,
     declared_type: DocumentType = DocumentType.UNRECOGNISED,
+    live_captures: tuple[tuple[bytes, str | None], ...] = (),
 ) -> Intake:
     """Screen one capture and record it, in the order every route must use.
 
@@ -69,6 +70,10 @@ def record_capture(
             happened.
         media_type: What the sender said the capture was, recorded as given.
         declared_type: What the document claims to be, when that is known.
+        live_captures: Photographs of the person presenting the document, each
+            with the media type the sender stated, in the order they were
+            taken. They reach the face checks and are not stored; what is
+            recorded is the verdict, exactly as for the document itself.
 
     Returns:
         The case identifier, the subject and the verdict.
@@ -92,6 +97,9 @@ def record_capture(
         deployment=deployment,
         decided_at=now,
         declared_type=declared_type,
+        live_captures=tuple(
+            (photograph, stated or OCTET_STREAM) for photograph, stated in live_captures
+        ),
     )
     record_screening(
         session,

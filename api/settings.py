@@ -103,7 +103,10 @@ class Settings:
     """Signs transparency-log checkpoints. Without it, none can be published."""
 
     max_upload_bytes: int = DEFAULT_MAX_UPLOAD_BYTES
-    """Largest accepted capture."""
+    """Largest accepted capture, and largest accepted photograph of the person."""
+
+    max_live_captures: int = 6
+    """Most photographs of the person accepted with one document. A policy limit."""
 
     trust_store: TrustStore = dataclasses.field(default_factory=TrustStore)
     """The issuer keys this checkpoint will rely on.

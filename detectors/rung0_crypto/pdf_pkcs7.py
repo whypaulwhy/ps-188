@@ -24,7 +24,7 @@ import io
 import time
 from typing import Final
 
-from core.contracts import Evidence, Result, Rung, Subject
+from core.contracts import DOCUMENT_ROLE, Artefact, Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
 from detectors.rung0_crypto.trust_store import TrustStore
 
@@ -54,16 +54,29 @@ class PdfPkcs7SignatureDetector(Detector):
         """
         self._trust_store = trust_store
 
+    @staticmethod
+    def _document(subject: Subject) -> Artefact | None:
+        """Return the document if it is a PDF.
+
+        Only the document is ever examined. A signed PDF sent alongside it, as a
+        photograph of the person for instance, is not the document, and verifying
+        it would clear a case on a signature the document never carried.
+        """
+        document = subject.artefact(DOCUMENT_ROLE)
+        if document is None or document.media_type != PDF_MEDIA_TYPE:
+            return None
+        return document
+
     def applies_to(self, subject: Subject) -> bool:
-        """Report whether the subject carries a PDF.
+        """Report whether the document is a PDF.
 
         Args:
             subject: The material under examination.
 
         Returns:
-            Whether any artefact is a PDF.
+            Whether the document itself is a PDF.
         """
-        return any(artefact.media_type == PDF_MEDIA_TYPE for artefact in subject.artefacts)
+        return self._document(subject) is not None
 
     def run(self, subject: Subject) -> tuple[Evidence, ...]:
         """Verify the embedded signature and report what was established.
@@ -72,13 +85,12 @@ class PdfPkcs7SignatureDetector(Detector):
             subject: The material under examination.
 
         Returns:
-            One piece of evidence. Never raises.
+            One piece of evidence, or none when the document is not a PDF.
+            Never raises.
         """
         started = time.perf_counter()
-        artefact = next(
-            (item for item in subject.artefacts if item.media_type == PDF_MEDIA_TYPE), None
-        )
-        if artefact is None:  # pragma: no cover - guarded by applies_to
+        artefact = self._document(subject)
+        if artefact is None:
             return ()
 
         result, reasons = self._examine(artefact.data)

@@ -22,7 +22,7 @@ import io
 import time
 from typing import Final
 
-from core.contracts import Evidence, Result, Rung, Subject
+from core.contracts import DOCUMENT_ROLE, Artefact, Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
 
 DETECTOR_VERSION: Final[str] = "pdf_structure/1.0.0"
@@ -43,15 +43,23 @@ class PdfStructureDetector(Detector):
     id = "rung2.pdf_structure"
     rung = Rung.INFERENCE
 
+    @staticmethod
+    def _document(subject: Subject) -> Artefact | None:
+        """Return the document if it is a PDF. No other artefact is examined here."""
+        document = subject.artefact(DOCUMENT_ROLE)
+        if document is None or document.media_type != PDF_MEDIA_TYPE:
+            return None
+        return document
+
     def applies_to(self, subject: Subject) -> bool:
-        """Report whether the subject carries a PDF."""
-        return any(artefact.media_type == PDF_MEDIA_TYPE for artefact in subject.artefacts)
+        """Report whether the document is a PDF."""
+        return self._document(subject) is not None
 
     def run(self, subject: Subject) -> tuple[Evidence, ...]:
         """Count revisions and report suspicion, never authenticity."""
         started = time.perf_counter()
-        artefact = next((a for a in subject.artefacts if a.media_type == PDF_MEDIA_TYPE), None)
-        if artefact is None:  # pragma: no cover - guarded by applies_to
+        artefact = self._document(subject)
+        if artefact is None:
             return ()
 
         try:

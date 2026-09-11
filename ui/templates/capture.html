@@ -51,6 +51,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--ground);
@@ -88,6 +89,7 @@
     padding: 18px;
     margin-bottom: 16px;
   }
+  .card h2 { margin-top: 0; }
 
   label.field { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 6px; }
   select {
@@ -111,15 +113,21 @@
 
   input[type="file"] { display: none; }
 
-  #preview { display: none; margin-top: 14px; }
+  #preview { margin-top: 14px; }
   #preview img {
     width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block;
+  }
+
+  .prompt { font-size: 1.05rem; font-weight: 600; margin: 0; }
+  .frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .frames img {
+    width: 100%; aspect-ratio: 3 / 4; object-fit: cover;
+    border-radius: 8px; border: 1px solid var(--line); display: block;
   }
 
   .hint { color: var(--muted); font-size: 0.82rem; margin-top: 12px; }
 
   /* the verdict */
-  #result { display: none; }
   .verdict { border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid transparent; }
   .verdict .label {
     font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
@@ -156,7 +164,7 @@
   .case { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); margin-top: 4px; }
 
   /* working state */
-  #working { display: none; text-align: center; padding: 34px 18px; }
+  #working { text-align: center; padding: 34px 18px; }
   .spinner {
     width: 34px; height: 34px; margin: 0 auto 14px;
     border: 3px solid var(--line); border-top-color: var(--accent);
@@ -184,7 +192,7 @@
 <main>
   <section id="intake">
     <h1>Screen a document</h1>
-    <p class="sub">Photograph the document. The result appears here.</p>
+    <p class="sub">Photograph the document, then the person presenting it. The result appears here.</p>
 
     {% if unavailable %}
     <div class="gaps">
@@ -194,6 +202,7 @@
     {% endif %}
 
     <div class="card">
+      <h2>1. The document</h2>
       <label class="field" for="declared">What the document is presented as</label>
       <select id="declared">
         {% for kind in types %}
@@ -205,65 +214,215 @@
 
       <input type="file" id="file" accept="image/*,application/pdf" capture="environment">
       <button class="shoot" id="take" type="button">Take a photograph</button>
-      <div id="preview"><img id="thumb" alt="The document you photographed"></div>
-      <button class="shoot" id="send" type="button" style="display:none">Screen this document</button>
+      <div id="preview" hidden><img id="thumb" alt="The document you photographed"></div>
 
       <p class="hint">
-        Photograph the whole document, flat and in focus. A strip or number that
-        cannot be read is reported as unread, never guessed at.
+        Photograph the whole document, flat and in focus, with nobody's face in the
+        picture except the one printed on it. A strip or number that cannot be read is
+        reported as unread, never guessed at.
       </p>
     </div>
+
+    <div class="card" id="person" hidden>
+      <h2>2. The person presenting it</h2>
+      <p class="prompt" id="prompt"></p>
+      <input type="file" id="face" accept="image/*" capture="user">
+      <button class="shoot" id="face-take" type="button"></button>
+      <div class="frames" id="frames"></div>
+      <button class="shoot secondary" id="face-reset" type="button" hidden>
+        Take the photographs again
+      </button>
+
+      <p class="hint">
+        The first photograph is compared with the one on the document. The person
+        turning their head between photographs is how this checks that a real person
+        is in front of the camera and not a picture of one, so someone who keeps
+        perfectly still will be sent to an officer.
+      </p>
+    </div>
+
+    <button class="shoot" id="send" type="button" hidden></button>
   </section>
 
-  <section id="working">
+  <section id="working" hidden>
     <div class="spinner"></div>
     <p>Screening. Nothing is being sent off this machine.</p>
   </section>
 
-  <section id="result"></section>
+  <section id="result" hidden></section>
 </main>
 
 <script>
 (function () {
   "use strict";
 
-  var file = document.getElementById("file");
-  var take = document.getElementById("take");
-  var send = document.getElementById("send");
-  var thumb = document.getElementById("thumb");
-  var preview = document.getElementById("preview");
-  var intake = document.getElementById("intake");
-  var working = document.getElementById("working");
-  var result = document.getElementById("result");
-  var declared = document.getElementById("declared");
+  // Three photographs, with the person turning their head between them. The
+  // liveness check measures a change of facial shape, which a flat picture
+  // held up to the camera cannot produce however it is moved.
+  var PROMPTS = [
+    "Ask them to look straight at the camera.",
+    "Now ask them to turn their head a little to one side.",
+    "Now a little the other way."
+  ];
+  var ENOUGH = 2;
+  var LONGEST_EDGE = 1600;
+
+  function byId(id) { return document.getElementById(id); }
+
+  var declared = byId("declared");
+  var file = byId("file");
+  var take = byId("take");
+  var preview = byId("preview");
+  var thumb = byId("thumb");
+  var person = byId("person");
+  var prompt = byId("prompt");
+  var face = byId("face");
+  var faceTake = byId("face-take");
+  var faceReset = byId("face-reset");
+  var framesBox = byId("frames");
+  var send = byId("send");
+  var intake = byId("intake");
+  var working = byId("working");
+  var result = byId("result");
 
   var chosen = null;
+  var frames = [];
+  var shrinking = false;
 
   take.addEventListener("click", function () { file.click(); });
 
   file.addEventListener("change", function () {
-    chosen = file.files && file.files[0] ? file.files[0] : null;
-    if (!chosen) { return; }
+    var picked = file.files && file.files[0] ? file.files[0] : null;
+    if (!picked) { return; }
+    chosen = picked;
     take.textContent = "Take a different photograph";
     take.classList.add("secondary");
-    send.style.display = "block";
-    if (chosen.type.indexOf("image/") === 0) {
-      thumb.src = URL.createObjectURL(chosen);
-      preview.style.display = "block";
-    } else {
-      preview.style.display = "none";
-    }
+    showDocument(chosen);
+    person.hidden = false;
+    refresh();
   });
 
+  faceTake.addEventListener("click", function () {
+    if (!shrinking) { face.click(); }
+  });
+
+  face.addEventListener("change", function () {
+    var picked = face.files && face.files[0] ? face.files[0] : null;
+    face.value = "";
+    if (!picked || frames.length >= PROMPTS.length) { return; }
+    shrinking = true;
+    faceTake.disabled = true;
+    shrink(picked).then(function (photograph) {
+      frames.push(photograph);
+      var shown = document.createElement("img");
+      shown.src = URL.createObjectURL(photograph);
+      shown.alt = "Photograph " + frames.length + " of the person";
+      framesBox.appendChild(shown);
+      shrinking = false;
+      faceTake.disabled = false;
+      refresh();
+    });
+  });
+
+  faceReset.addEventListener("click", function () {
+    clearFrames();
+    refresh();
+  });
+
+  function showDocument(picked) {
+    if (thumb.src) { URL.revokeObjectURL(thumb.src); }
+    if (picked && picked.type.indexOf("image/") === 0) {
+      thumb.src = URL.createObjectURL(picked);
+      preview.hidden = false;
+    } else {
+      thumb.removeAttribute("src");
+      preview.hidden = true;
+    }
+  }
+
+  function clearFrames() {
+    frames = [];
+    Array.prototype.forEach.call(framesBox.querySelectorAll("img"), function (shown) {
+      URL.revokeObjectURL(shown.src);
+    });
+    framesBox.textContent = "";
+  }
+
+  function refresh() {
+    var taken = frames.length;
+    if (taken < PROMPTS.length) {
+      prompt.textContent = PROMPTS[taken];
+      faceTake.textContent = "Take photograph " + (taken + 1) + " of " + PROMPTS.length;
+      faceTake.hidden = false;
+      faceTake.classList.toggle("secondary", taken >= ENOUGH);
+    } else {
+      prompt.textContent = "All " + PROMPTS.length + " photographs taken.";
+      faceTake.hidden = true;
+    }
+    faceReset.hidden = taken === 0;
+
+    send.hidden = chosen === null;
+    if (taken >= ENOUGH) {
+      send.textContent = "Screen this document";
+      send.classList.remove("secondary");
+    } else if (taken === 1) {
+      send.textContent = "Screen with only one photograph of the person";
+      send.classList.add("secondary");
+    } else {
+      send.textContent = "Screen without photographing the person";
+      send.classList.add("secondary");
+    }
+  }
+
+  // The document is sent exactly as taken, because its compression traces are
+  // what the tamper check reads. Photographs of the person carry no such
+  // evidence, so they are made smaller for a slow link.
+  function shrink(picked) {
+    return new Promise(function (resolve) {
+      var source = URL.createObjectURL(picked);
+      var image = new Image();
+      image.onload = function () {
+        var scale = Math.min(1, LONGEST_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(source);
+        canvas.toBlob(function (smaller) { resolve(smaller || picked); }, "image/jpeg", 0.9);
+      };
+      image.onerror = function () {
+        URL.revokeObjectURL(source);
+        resolve(picked);
+      };
+      image.src = source;
+    });
+  }
+
+  // Once a screening is sent the page has no further use for the photographs.
+  function forget() {
+    chosen = null;
+    file.value = "";
+    showDocument(null);
+    person.hidden = true;
+    clearFrames();
+    take.textContent = "Take a photograph";
+    take.classList.remove("secondary");
+    refresh();
+  }
+
   send.addEventListener("click", function () {
-    if (!chosen) { return; }
-    intake.style.display = "none";
-    result.style.display = "none";
-    working.style.display = "block";
+    if (!chosen || shrinking) { return; }
+    intake.hidden = true;
+    result.hidden = true;
+    working.hidden = false;
 
     var body = new FormData();
     body.append("capture", chosen, chosen.name || "capture.jpg");
     body.append("declared_type", declared.value);
+    frames.forEach(function (photograph, index) {
+      body.append("live_capture", photograph, "person-" + (index + 1) + ".jpg");
+    });
+    forget();
 
     // Posted to the API from the browser. The console never imports it: an
     // import-linter contract forbids ui/ from reaching api/, and a fetch from
@@ -279,9 +438,9 @@
       })
       .then(render)
       .catch(function (error) {
-        working.style.display = "none";
-        result.style.display = "block";
-        result.innerHTML = "";
+        working.hidden = true;
+        result.hidden = false;
+        result.textContent = "";
         var box = document.createElement("div");
         box.className = "failed";
         box.textContent =
@@ -305,14 +464,9 @@
     button.className = "shoot secondary";
     button.textContent = "Screen another document";
     button.addEventListener("click", function () {
-      result.style.display = "none";
-      intake.style.display = "block";
-      chosen = null;
-      file.value = "";
-      send.style.display = "none";
-      preview.style.display = "none";
-      take.textContent = "Take a photograph";
-      take.classList.remove("secondary");
+      result.hidden = true;
+      intake.hidden = false;
+      window.scrollTo(0, 0);
     });
     return button;
   }
@@ -324,9 +478,9 @@
   };
 
   function render(data) {
-    working.style.display = "none";
-    result.innerHTML = "";
-    result.style.display = "block";
+    working.hidden = true;
+    result.textContent = "";
+    result.hidden = false;
 
     var card = document.createElement("div");
     card.className = "verdict " + data.decision;
@@ -375,6 +529,8 @@
     result.appendChild(again());
     window.scrollTo(0, 0);
   }
+
+  refresh();
 })();
 </script>
 </body>

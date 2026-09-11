@@ -20,6 +20,8 @@ from core.contracts.finding import Finding
 from core.contracts.provenance import Provenance
 from core.contracts.review import REVIEW_OUTCOMES, OfficerReview
 from core.contracts.subject import (
+    DOCUMENT_ROLE,
+    LIVE_CAPTURE_ROLE,
     Artefact,
     DecodedCode,
     DocumentType,
@@ -31,6 +33,8 @@ from core.contracts.verdict import CLEARING_BASIS, Verdict
 
 __all__ = [
     "CLEARING_BASIS",
+    "DOCUMENT_ROLE",
+    "LIVE_CAPTURE_ROLE",
     "RESULTS_BY_RUNG",
     "REVIEW_OUTCOMES",
     "SCORED_RUNGS",

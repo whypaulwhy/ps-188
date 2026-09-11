@@ -1134,3 +1134,99 @@ to turn their head slowly.
 counts from an ad-hoc local check in `face_match.py` and in this file. Rule 2
 admits no figure that `eval/run_eval.py` did not produce on a named dataset, so
 they have been removed. The check is described, not quantified.
+
+---
+
+## Phase 19 — Photographs of the person reach the face checks
+
+Phase 17 built face comparison and liveness, and phase 18 made liveness measure
+the right thing. Neither had anything to read: the capture page sent one
+document image, so on every case both reported that the bearer had never been
+photographed.
+
+- `/console/capture`: after the document, a second step photographs the person
+  with the front camera, three times, with an instruction before each — look at
+  the camera; turn your head a little to one side; a little the other way. Two is
+  the minimum the liveness check needs. With fewer, the send button says what
+  will happen: "Screen without photographing the person", "Screen with only one
+  photograph of the person".
+- It opens the phone's own camera through a file input rather than showing live
+  video in the page, because video in a page needs a secure (`https://`)
+  connection and this runs over plain `http://` on a local network. Three taps
+  instead of an automatic burst, and nothing to install on the phone.
+- Photographs of the person are made smaller on the phone before sending. **The
+  document is never altered**: its compression traces are what the tamper check
+  reads, and re-saving it would erase them.
+- `POST /screenings` and `/console/submit` accept repeated `live_capture` files.
+  Each is held to the document's size limit, at most `Settings.max_live_captures`
+  (6) are accepted, and an empty part is ignored rather than counted.
+- They travel through `record_capture` → `screen` → `build_subject` as artefacts
+  with role `live_capture`, after the document and in the order taken. Nothing is
+  read from them and none is stored: what is recorded is the verdict, as for the
+  document itself.
+- `DOCUMENT_ROLE` and `LIVE_CAPTURE_ROLE` now live in `core/contracts/subject.py`,
+  replacing four separate definitions of the same two strings.
+
+### The hole this opened, and closed before it shipped
+
+Six detectors chose their input as "the first artefact of the right kind": the
+two Rung 0 signature checks, `digilocker_xml_sig` and `pdf_pkcs7`, and four Rung 2
+checks, `pdf_structure`, `metadata_forensics`, `tamper_classical` and
+`tamper_trufor`. With one file per screening, that was the document. With
+photographs of the person alongside, it need not be.
+
+**Tested rather than argued.** With the new wiring in place and those detectors
+unchanged, an unreadable document screened together with a genuinely signed PDF
+labelled as a photograph of the person had that PDF verified — `PROOF_VALID` —
+and the case would have cleared on a signature its actual document never
+carried. A file reached the only rung that can clear by arriving in the wrong
+slot.
+
+Each of the six now examines the artefact with the document's role and nothing
+else. `tests/integration/test_live_capture.py` holds the attack, using the signed
+PDF from the `pdf-signature-valid` golden case, beside a control showing that the
+same file does verify when it is the document. `tests/unit/test_document_checks.py`
+pins the rule for all six from both sides, with the other file listed first so
+that order cannot decide it.
+
+### Verified
+
+- `make check`: **1861 passed**, `core/` at 100% branch coverage.
+- The real pipeline, run in memory on the owner's own photographs, held outside
+  the repository, with one of them standing in for the document. With no
+  photographs of the person, both face checks said the person was not
+  photographed. With one, the face was compared and liveness said a single
+  photograph cannot show presence. With the same photograph sent twice, liveness
+  escalated it as a still picture. With a face-on frame followed by a turned
+  one, and with three turning frames, liveness raised nothing. No score from that
+  run is recorded here.
+- The capture page, driven in a desktop browser with generated images: the
+  person step appears after the document, the send button's wording follows the
+  number of photographs, a 2400x3200 photograph of the person arrives as
+  1200x1600, the server received both photographs, and the page drops them once
+  the screening is sent. At phone width it does not scroll sideways.
+- **Not yet verified: a phone.** The page has not been driven on a real phone
+  with a real camera. That is the first thing to do with it.
+
+### Also in this phase
+
+- `tools/demo_preflight.py` prints the `/console/capture` address and draws it as
+  a QR code for the phone's camera. A code for a sample address was decoded back
+  to that address; how it renders in a particular terminal window is to be seen.
+- `.gitignore` covers `*.sqlite3`. Only `*.db` was ignored, so a case database
+  created inside the repository folder could have been committed.
+- `docs/demonstration.md`: the phone section starts the server on the network
+  with the face models configured, and records why a phone could not reach the
+  development laptop: its only inbound firewall rule for Python applied to
+  Public networks, and the home network is Private.
+
+**Left open, deliberately.** When a face matches, the officer's finding still
+opens with "An automated check for signs of alteration raised nothing": the Rung
+2 finding templates in `core/trust/policy.py` are shared by every Rung 2
+detector, and that one was written for the tamper check. Changing it is a change
+to `core` and waits for a decision.
+
+**Exit criteria.** A screening from the capture page carries photographs of the
+person to both face checks; a document check examines only the document,
+whatever else arrives with it; and a case screened without photographs of the
+person still says so.

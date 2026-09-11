@@ -50,7 +50,7 @@ from typing import Final
 
 import numpy as np
 
-from core.contracts import Evidence, Result, Rung, Subject
+from core.contracts import LIVE_CAPTURE_ROLE, Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
 from detectors.rung2_inference import face_engine
 
@@ -61,8 +61,6 @@ DETECTOR_VERSION: Final[str] = "pad_liveness/2.0.0+landmark-geometry"
 old measure and replayed under this one is correctly reported as a different
 basis for the decision rather than as the same one.
 """
-
-LIVE_CAPTURE_ROLE: Final[str] = "live_capture"
 
 MINIMUM_FRAMES: Final[int] = 2
 """Fewer than this and there is no change to measure."""

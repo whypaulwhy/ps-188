@@ -18,7 +18,7 @@ and `make check` passes, and tell me the real numbers rather than the ones
 written down.
 
 **Do not re-explore the repository, re-run the demo, or re-audit anything.** It
-was audited twice on 2026-09-10 and everything below is current as of phase 18
+was audited twice on 2026-09-10 and everything below is current as of phase 19
 (2026-09-11). Start from "What is left" at the bottom of this file.
 
 Here is what you need to know so I do not have to explain it again.
@@ -38,14 +38,15 @@ learning, and it can only ever push a case *toward* a human or a rejection — i
 can never clear one, whatever it scores. Rung 3 is advisory and decides nothing.
 Uncertainty always routes to `MANUAL_REVIEW`, never to `CLEARED`.
 
-**Where it stands.** Phases 0–18 done. `make check` is the gate: ruff, `ruff
+**Where it stands.** Phases 0–19 done. `make check` is the gate: ruff, `ruff
 format --check`, `mypy --strict core`, `lint-imports`, pytest with `core/` at
-100% branch coverage. At the end of phase 18: **1829 passed, zero
+100% branch coverage. At the end of phase 19: **1861 passed, zero
 skipped.**
 
-**I am close to a demonstration.** The detectors are built and verified. What
-remains is the last wiring — the capture page does not yet send photographs of
-the person — and a rehearsal. See "What is left".
+**The demonstration is wired end to end.** The capture page photographs the
+document and then the person, and both face checks receive the photographs. What
+remains is trying it on a real phone, the printed-photograph test, and a
+rehearsal. See "What is left".
 
 **What is deliberately absent, and must never be quietly filled in.** No real
 document has ever been screened. Aadhaar Secure QR is a stub because there is no
@@ -81,7 +82,12 @@ heredocs mangle backslash escapes, so use the Write tool for Python files; the
 API does not create its own schema, so `uv run alembic upgrade head` comes
 first; the console case URL is `/console/case/<id>`, singular; a golden case
 **silently skips** unless its detector is registered in `BUILDERS` in
-`tests/golden/test_golden_corpus.py`.
+`tests/golden/test_golden_corpus.py`; the repository scans only cover files git
+tracks, so the test count changes when a new file is staged; for the phone, the
+server must be started with `--host 0.0.0.0`, and a Windows firewall rule applies
+only to the network profile it names — on this laptop the only inbound rule for
+Python covered Public networks and the home Wi-Fi is Private, so a phone's
+requests were silently dropped (`docs/demonstration.md`, Plan B, has the rule).
 
 **Demo files never go in the repository.** Document images, face photographs and
 case databases live in `D:\sentinel-local`. Committing one would contradict the
@@ -95,17 +101,17 @@ Now read "What is left" below, propose what to do next, and wait for me to pick.
 
 ## Where things actually are
 
-### Runs today, verified end to end
+### Runs today
 
 | | |
 |---|---|
 | `uv run python tools/demo.py` | the whole story offline, ~15s, no network |
-| `/console/capture` | phone-first camera page, renders the verdict inline |
-| `/console/submit` | plain file upload, no JavaScript |
+| `/console/capture` | phone-first: the document, then three photographs of the person; renders the verdict inline. Driven in a desktop browser, **not yet on a phone** |
+| `/console/submit` | plain file upload, no JavaScript; also takes photographs of the person |
 | `python -m api.publish_checkpoint --out DIR [--since PREV.json]` | signed checkpoints |
 | `python tools/verify_checkpoint.py A.json B.json` | what a **third party** runs |
 | `python -m api.retention_job [--dry-run]` | destroy expired case records |
-| `python tools/demo_preflight.py` | why a phone cannot reach the console |
+| `python tools/demo_preflight.py` | why a phone cannot reach the console, and a QR code of the address |
 | `python tools/face_check.py DOC.jpg FACE1.jpg FACE2.jpg` | face + liveness on your own images |
 
 ### The three verdicts, all confirmed from photographed cards
@@ -127,6 +133,11 @@ Now read "What is left" below, propose what to do next, and wait for me to pick.
   between frames, after removing how the picture moved. A turning head passes;
   a photograph shifted, rotated, scaled or tilted in the hand is escalated.
   Verified on my frames and on warps of them.
+- **Wired in phase 19.** Run through the real pipeline on my photographs, in
+  memory: no photographs of the person → both say the person was not
+  photographed; one → the face is compared and liveness is not established; the
+  same photograph twice → escalated as a still picture; a turning head → nothing
+  raised.
 
 ### Environment for a full-capability run
 
@@ -140,6 +151,10 @@ Optional and each stated on every case when absent:
 `SENTINELID_LEDGER_KEY_FILE`, `SENTINELID_HASH_KEY_FILE`,
 `SENTINELID_TRUST_ANCHORS_FILE`, `SENTINELID_RETENTION_POLICY_FILE`.
 
+For the phone, `docs/demonstration.md` Plan B has the whole sequence: a firewall
+rule once, the server on `--host 0.0.0.0`, then `tools/demo_preflight.py`. It
+needs a local network but **no internet** — a phone hotspot with no data works.
+
 Face models are already downloaded to `C:\Users\user\.insightface\models\buffalo_l`
 (det_10g, w600k_r50, 2d106det, 1k3d68, genderage). There is a redundant 275 MB
 `buffalo_l.zip` beside them that can be deleted.
@@ -148,34 +163,27 @@ Face models are already downloaded to `C:\Users\user\.insightface\models\buffalo
 
 ## What is left
 
-### 1. The last wiring — this is the next job
+### 1. Try it on the phone — this is the next job
 
-**`/console/capture` sends one document image and no photographs of the
-person.** So `face_match` and `pad_liveness` both report that the bearer was
-never photographed, on every case. The detectors work; nothing feeds them.
+The capture page has been driven in a desktop browser with generated images, and
+the pipeline behind it on my own photographs, but **never on a phone with a real
+camera**. Follow `docs/demonstration.md`, Plan B, then check:
 
-What is needed:
-
-- After the document, open the **front** camera and take **two or more frames a
-  moment apart** — `pad_liveness` reports `INCONCLUSIVE` on a single frame by
-  design.
-- **The page must tell the person to turn their head slowly while it takes
-  them.** Liveness now measures change of shape, and a person holding perfectly
-  still is escalated. That is the safe direction, but it is the wrong experience
-  at a barrier, and it would make the demonstration look broken.
-- Post the frames as additional files with role `live_capture`.
-  `api/intake.py::record_capture` takes one capture today and needs to accept
-  the extra artefacts; `POST /screenings` needs to receive them.
-
-That is the last thing standing between the current state and the full
-demonstration.
+- the second step opens the **front** camera, and the instruction changes
+  between photographs;
+- the page is still there when the camera closes. Some Android phones reload a
+  browser tab while the camera app is open, which would lose the photographs
+  taken so far — better found now than in front of a judge;
+- the result lists the face checks under *What was found*, not under *What was
+  not checked*;
+- the QR code from `tools/demo_preflight.py` scans from the laptop screen.
 
 ### 2. Then: two tests with a real printed photograph
 
 Liveness v2 has been verified against warps of a still photograph, **not against
 a real printed photograph filmed by a real camera** — paper curvature, glare and
-focus all differ. Print a selfie on paper and, once the capture page takes live
-frames, try:
+focus all differ. Print a selfie on paper and, using the capture page's
+photographs-of-the-person step, try:
 
 - holding it still — should escalate;
 - moving and tilting it in the hand — should escalate;
@@ -184,9 +192,20 @@ frames, try:
 
 ### 3. Then: rehearse
 
-`docs/demonstration.md` is the running order, the fallbacks, the numbers that
-may be said out loud, and the questions to expect. It predates phases 16–18 and
-needs the face and liveness moment added. Run it once end to end and record it.
+`docs/demonstration.md` Plan B (the phone) was rewritten in phase 19; its running
+order and Plan A still predate phases 16–18. A proposed running order, **not yet
+agreed**:
+
+1. The signed specimen card → Cleared; the edited copy → Rejected.
+2. A card with an invented Aadhaar number → Rejected.
+3. A real licence → Manual review. Point at *What was not checked*.
+4. The same licence presented by its holder, then by someone else. The face
+   finding changes; the verdict colour does not, on purpose.
+
+Before the day, check the holder against their own licence photograph: licence
+portraits are small and often old. Photograph documents flat on the table with
+no real face in the frame, because the face check uses the largest face in the
+document photograph. Run it once end to end and record it.
 
 ### 4. Blocked on a human, not on code
 
@@ -201,6 +220,12 @@ needs the face and liveness moment added. Run it once end to end and record it.
    staff authenticate.
 
 ### 5. Open questions worth a decision
+
+**The officer wording for a face that matches.** The finding opens with "An
+automated check for signs of alteration raised nothing", because the Rung 2
+finding templates in `core/trust/policy.py` are shared by every Rung 2 detector
+and that one was written for the tamper check. It will be on screen during the
+impostor moment of the demonstration. Fixing it is a change to `core`.
 
 **Neither face threshold has a quotable number behind it.**
 `face_match.SUSPICION_THRESHOLD = 0.33` and `pad_liveness.STILLNESS_THRESHOLD =
@@ -222,6 +247,8 @@ sounds. Fixing it means new specimens, not a new detector.
   aggregation. Deleting it is a legitimate outcome, ten minutes.
 - `template_geometry.py`, scoped to the ICAO TD3 zone only. Deferred with a
   documented reason.
+- Automatic photographs of the person from live video in the page, instead of
+  three taps. Needs `https://` on the local network; not attempted.
 - Authentication, once §4.5 has an answer.
 - The written SIH submission. **Rule 2 applies to slides.**
 
@@ -231,7 +258,7 @@ sounds. Fixing it means new specimens, not a new detector.
 
 1. `CLAUDE.md` — the contract.
 2. This file.
-3. `docs/roadmap.md`, phases 16–18.
+3. `docs/roadmap.md`, phases 16–19.
 4. `docs/demonstration.md` when the demo is the subject.
 5. `docs/how-it-works.html` is the plain-English explanation, for presenting
-   rather than maintaining. Open it in a browser. It also predates phases 16–18.
+   rather than maintaining. Open it in a browser. It predates phases 16–19.

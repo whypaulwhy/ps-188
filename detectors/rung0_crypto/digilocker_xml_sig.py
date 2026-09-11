@@ -30,7 +30,7 @@ from typing import Final
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
-from core.contracts import Evidence, Result, Rung, Subject
+from core.contracts import DOCUMENT_ROLE, Artefact, Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
 from detectors.rung0_crypto.trust_store import TrustStore
 
@@ -80,16 +80,29 @@ class DigiLockerXmlSignatureDetector(Detector):
         """
         self._trust_store = trust_store
 
+    @staticmethod
+    def _document(subject: Subject) -> Artefact | None:
+        """Return the document if it is XML.
+
+        Only the document is ever examined. A signed file sent alongside it, as a
+        photograph of the person for instance, is not the document, and verifying
+        it would clear a case on a signature the document never carried.
+        """
+        document = subject.artefact(DOCUMENT_ROLE)
+        if document is None or document.media_type not in XML_MEDIA_TYPES:
+            return None
+        return document
+
     def applies_to(self, subject: Subject) -> bool:
-        """Report whether the subject carries an XML artefact to check.
+        """Report whether the document is XML.
 
         Args:
             subject: The material under examination.
 
         Returns:
-            Whether any artefact is XML.
+            Whether the document itself is XML.
         """
-        return any(artefact.media_type in XML_MEDIA_TYPES for artefact in subject.artefacts)
+        return self._document(subject) is not None
 
     def run(self, subject: Subject) -> tuple[Evidence, ...]:
         """Verify the signature and report what was established.
@@ -98,13 +111,12 @@ class DigiLockerXmlSignatureDetector(Detector):
             subject: The material under examination.
 
         Returns:
-            One piece of evidence. Never raises.
+            One piece of evidence, or none when the document is not XML.
+            Never raises.
         """
         started = time.perf_counter()
-        artefact = next(
-            (item for item in subject.artefacts if item.media_type in XML_MEDIA_TYPES), None
-        )
-        if artefact is None:  # pragma: no cover - guarded by applies_to
+        artefact = self._document(subject)
+        if artefact is None:
             return ()
 
         result, reasons = self._examine(artefact.data)

@@ -19,7 +19,7 @@ import io
 import time
 from typing import Final
 
-from core.contracts import Evidence, Result, Rung, Subject
+from core.contracts import DOCUMENT_ROLE, Artefact, Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
 
 DETECTOR_VERSION: Final[str] = "metadata_forensics/1.0.0"
@@ -52,19 +52,23 @@ class MetadataForensicsDetector(Detector):
     id = "rung2.metadata_forensics"
     rung = Rung.INFERENCE
 
+    @staticmethod
+    def _document(subject: Subject) -> Artefact | None:
+        """Return the document if it is an image. No other artefact is examined here."""
+        document = subject.artefact(DOCUMENT_ROLE)
+        if document is None or not document.media_type.startswith(IMAGE_MEDIA_PREFIX):
+            return None
+        return document
+
     def applies_to(self, subject: Subject) -> bool:
-        """Report whether the subject carries an image."""
-        return any(
-            artefact.media_type.startswith(IMAGE_MEDIA_PREFIX) for artefact in subject.artefacts
-        )
+        """Report whether the document is an image."""
+        return self._document(subject) is not None
 
     def run(self, subject: Subject) -> tuple[Evidence, ...]:
         """Read the image's metadata and report only positive findings."""
         started = time.perf_counter()
-        artefact = next(
-            (a for a in subject.artefacts if a.media_type.startswith(IMAGE_MEDIA_PREFIX)), None
-        )
-        if artefact is None:  # pragma: no cover - guarded by applies_to
+        artefact = self._document(subject)
+        if artefact is None:
             return ()
 
         result, reasons, score = self._examine(artefact.data)

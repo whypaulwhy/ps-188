@@ -52,6 +52,7 @@ class Context:
         now: datetime.datetime,
         media_type: str | None = None,
         declared_type: DocumentType = DocumentType.UNRECOGNISED,
+        live_captures: tuple[tuple[bytes, str | None], ...] = (),
     ) -> Intake:
         """Screen one capture and record it, allocating the case identifier.
 
@@ -67,6 +68,8 @@ class Context:
             now: One clock read, shared by every record of this case.
             media_type: What the browser said the file was.
             declared_type: What the document claims to be, when known.
+            live_captures: Photographs of the person, in the order taken, each
+                with what the browser said it was.
 
         Returns:
             The case identifier, the subject and the verdict.
@@ -83,6 +86,7 @@ class Context:
             now=now,
             media_type=media_type,
             declared_type=declared_type,
+            live_captures=live_captures,
         )
 
 

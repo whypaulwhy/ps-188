@@ -52,6 +52,11 @@ CAPTURE_TOO_LARGE = (
     "again at a lower resolution, or use the original file rather than a scan of it."
 )
 
+PHOTOGRAPH_TOO_LARGE = (
+    "One of the photographs of the person is larger than this checkpoint accepts. "
+    "Take it again at a lower resolution."
+)
+
 NOTE_HOLDS_A_NUMBER = (
     "That note appears to contain a document number. Please remove it and describe "
     "the document instead - numbers are never stored in the clear."
@@ -238,7 +243,7 @@ def _submit_page(request: Request, *, error: str | None = None) -> Response:
 
 
 async def submit(request: Request) -> Response:
-    """Accept one uploaded capture, screen it, and go to the case it produced.
+    """Accept an uploaded document and any photographs of the person, then show the case.
 
     A redirect afterwards rather than a rendered page, for the same reason the
     review form redirects: a refresh must not screen the document a second time
@@ -257,6 +262,25 @@ async def submit(request: Request) -> Response:
     if len(captured) > context.settings.max_upload_bytes:
         return _submit_page(request, error=CAPTURE_TOO_LARGE)
 
+    people: list[tuple[bytes, str | None]] = []
+    for sent in form.getlist("live_capture"):
+        if not hasattr(sent, "read"):
+            continue
+        photograph = await sent.read()  # type: ignore[union-attr]
+        if not photograph:  # a form with no photograph chosen still sends an empty part
+            continue
+        if len(photograph) > context.settings.max_upload_bytes:
+            return _submit_page(request, error=PHOTOGRAPH_TOO_LARGE)
+        people.append((photograph, getattr(sent, "content_type", None)))
+    if len(people) > context.settings.max_live_captures:
+        return _submit_page(
+            request,
+            error=(
+                f"At most {context.settings.max_live_captures} photographs of the person "
+                "can be sent with one document. Choose fewer."
+            ),
+        )
+
     declared = str(form.get("declared_type") or DocumentType.UNRECOGNISED.value)
     try:
         document_type = DocumentType(declared)
@@ -271,6 +295,7 @@ async def submit(request: Request) -> Response:
                 now=datetime.datetime.now(datetime.UTC),
                 media_type=getattr(upload, "content_type", None),
                 declared_type=document_type,
+                live_captures=tuple(people),
             )
         except RecordingError as error:
             return _submit_page(request, error=str(error))

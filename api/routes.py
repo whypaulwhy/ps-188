@@ -53,6 +53,7 @@ NOTE_HOLDS_A_NUMBER = (
     "document instead: numbers are stored only as digests, never in the clear."
 )
 CAPTURE_TOO_LARGE = "This capture is larger than this checkpoint accepts."
+LIVE_CAPTURE_TOO_LARGE = "A photograph of the person is larger than this checkpoint accepts."
 NO_SIGNING_KEY = (
     "This checkpoint holds no signing key, so no checkpoint can be published. "
     "No unsigned substitute is offered, because one would look like proof."
@@ -87,6 +88,14 @@ def health(
 @router.post("/screenings", response_model=ScreeningOut, status_code=status.HTTP_201_CREATED)
 async def submit_screening(
     capture: UploadFile = File(..., description="The document image or file, as captured."),
+    live_capture: list[UploadFile] | None = File(
+        None,
+        description=(
+            "Photographs of the person presenting the document, in the order they were "
+            "taken. The first is compared with the document; two or more let the "
+            "liveness check run."
+        ),
+    ),
     declared_type: str = Form(
         DocumentType.UNRECOGNISED.value, description="What the document claims to be."
     ),
@@ -97,6 +106,21 @@ async def submit_screening(
     payload = await capture.read()
     if len(payload) > context.settings.max_upload_bytes:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, CAPTURE_TOO_LARGE)
+
+    people: list[tuple[bytes, str | None]] = []
+    for upload in live_capture or ():
+        photograph = await upload.read()
+        if not photograph:  # a form with no photograph chosen still sends an empty part
+            continue
+        if len(photograph) > context.settings.max_upload_bytes:
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, LIVE_CAPTURE_TOO_LARGE)
+        people.append((photograph, upload.content_type))
+    if len(people) > context.settings.max_live_captures:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"At most {context.settings.max_live_captures} photographs of the person "
+            "can be sent with one document.",
+        )
 
     try:
         document_type = DocumentType(declared_type)
@@ -117,6 +141,7 @@ async def submit_screening(
             now=now,
             media_type=capture.content_type,
             declared_type=document_type,
+            live_captures=tuple(people),
         )
     except RecordingError as error:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(error)) from error

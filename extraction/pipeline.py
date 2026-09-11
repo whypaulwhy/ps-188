@@ -24,6 +24,8 @@ import hashlib
 from typing import Final
 
 from core.contracts import (
+    DOCUMENT_ROLE,
+    LIVE_CAPTURE_ROLE,
     Artefact,
     DecodedCode,
     DocumentType,
@@ -36,8 +38,6 @@ from extraction.mrz_locate import locate_mrz
 from extraction.ocr_adapter import read_mrz, read_printed_text
 from extraction.preprocess import decode, normalise
 from extraction.qr_decode import decode_qr
-
-DOCUMENT_ROLE: Final[str] = "document_front"
 
 UNREADABLE_IMAGE: Final[str] = (
     "The captured file could not be opened as an image, so nothing on it was read."
@@ -52,6 +52,7 @@ def build_subject(
     *,
     provenance: Provenance,
     declared_type: DocumentType = DocumentType.UNRECOGNISED,
+    live_captures: tuple[tuple[bytes, str], ...] = (),
 ) -> Subject:
     """Extract everything obtainable from one capture.
 
@@ -60,17 +61,29 @@ def build_subject(
             record, so it is never normalised before hashing.
         provenance: Where it came from and when it was captured.
         declared_type: What the document claims to be, when that is known.
+        live_captures: Photographs of the person presenting the document, each
+            with its media type, in the order they were taken. They travel
+            after the document for the face checks. Nothing is read from them:
+            a code or a strip in a photograph of a person is not the document's.
 
     Returns:
         The subject. Never raises: a capture that cannot be opened at all comes
         back with no zones and a stated reason.
     """
-    digest = hashlib.sha256(captured).hexdigest()
-    artefact = Artefact(
+    document = Artefact(
         role=DOCUMENT_ROLE,
         media_type=provenance.media_type,
-        sha256=digest,
+        sha256=hashlib.sha256(captured).hexdigest(),
         data=captured,
+    )
+    people = tuple(
+        Artefact(
+            role=LIVE_CAPTURE_ROLE,
+            media_type=media_type,
+            sha256=hashlib.sha256(photograph).hexdigest(),
+            data=photograph,
+        )
+        for photograph, media_type in live_captures
     )
 
     try:
@@ -79,7 +92,7 @@ def build_subject(
         return Subject(
             provenance=provenance,
             declared_type=declared_type,
-            artefacts=(artefact,),
+            artefacts=(document, *people),
             not_extracted=(UNREADABLE_IMAGE,),
         )
 
@@ -117,7 +130,7 @@ def build_subject(
     return Subject(
         provenance=provenance,
         declared_type=declared_type,
-        artefacts=(artefact,),
+        artefacts=(document, *people),
         zones=tuple(zones),
         codes=tuple(codes),
         not_extracted=tuple(not_extracted),

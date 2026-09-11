@@ -35,13 +35,11 @@ from __future__ import annotations
 import time
 from typing import Final
 
-from core.contracts import Evidence, Result, Rung, Subject
+from core.contracts import DOCUMENT_ROLE, LIVE_CAPTURE_ROLE, Evidence, Result, Rung, Subject
 from detectors.base import Detector, register
 from detectors.rung2_inference import face_engine
 
 DETECTOR_VERSION: Final[str] = "face_match/1.0.0+buffalo_l"
-LIVE_CAPTURE_ROLE: Final[str] = "live_capture"
-DOCUMENT_ROLE: Final[str] = "document_front"
 
 SUSPICION_THRESHOLD: Final[float] = 0.33
 """Above this the case is escalated. Equivalent to a similarity below +0.34.
