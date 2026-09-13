@@ -32,6 +32,7 @@ ROOT_PACKAGES: tuple[str, ...] = (
 
 IMPLEMENTED: frozenset[str] = frozenset(
     {
+        "api.challenge",
         "core.contracts",
         "core.contracts.enums",
         "core.contracts.evidence",
@@ -62,6 +63,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "detectors.rung1_deterministic.expiry",
         "detectors.rung1_deterministic.field_crossmatch",
         "detectors.rung1_deterministic.mrz_checkdigits",
+        "detectors.rung2_inference.challenge_response",
         "detectors.rung2_inference.face_match",
         "detectors.rung3_context._identify",
         "detectors.rung3_context.context_store",

@@ -245,7 +245,7 @@
       <div id="video-mode" hidden>
         <video id="live" autoplay playsinline muted aria-label="Live view from the front camera"></video>
         <button class="shoot" id="video-start" type="button" disabled>Start</button>
-        <button class="link" id="use-photos" type="button">Take three photographs instead</button>
+        <button class="link" id="use-photos" type="button">Photograph them one at a time instead</button>
       </div>
 
       <div id="photo-mode" hidden>
@@ -260,11 +260,11 @@
       </button>
 
       <p class="hint">
-        The first photograph is compared with the one on the document. The head
-        turning between photographs is how this checks that a real person is in front
-        of the camera and not a picture of one, so someone who keeps perfectly still
-        will be sent to an officer. Only still photographs are sent: no video is
-        recorded or kept.
+        The first photograph is compared with the one on the document. The movements
+        are chosen by this checkpoint each time, after screening begins, so a recording
+        of the person cannot know what will be asked. Someone who does not move as
+        asked, or who keeps perfectly still, is sent to an officer. Only still
+        photographs are sent: no video is recorded or kept.
       </p>
     </div>
 
@@ -283,31 +283,32 @@
 (function () {
   "use strict";
 
-  // Photographs of the person, with the head turning between them. The liveness
-  // check measures a change of facial shape, which a flat picture held up to the
-  // camera cannot produce however it is moved.
-  var PROMPTS = [
-    "Ask them to look straight at the camera.",
-    "Now ask them to turn their head a little to one side.",
-    "Now a little the other way."
-  ];
+  // What the checkpoint can ask for, in the words each way of photographing
+  // uses. In live video the screen faces the person, so the instruction speaks
+  // to them; with the camera app the officer is holding the phone, so it speaks
+  // to the officer. Left and right are always the person's own.
+  var CUES = {
+    CENTRE: "Look straight at the camera.",
+    LEFT: "Turn your head to your left.",
+    RIGHT: "Turn your head to your right."
+  };
+  var PROMPTS = {
+    CENTRE: "Ask them to look straight at the camera.",
+    LEFT: "Ask them to turn their head to their left.",
+    RIGHT: "Ask them to turn their head to their right."
+  };
 
-  // From live video the photographs are taken on cue, a moment apart. The check
-  // compares each photograph with the one before it, so frames a fraction of a
-  // second apart would each show only a fraction of a turn.
-  var CUES = [
-    "Look straight at the camera.",
-    "Turn your head a little to one side.",
-    "Now a little the other way.",
-    "Back to the camera."
-  ];
+  // Used when the checkpoint issues no challenge, so that the page still works.
+  // The screening then says that the person was not asked to do anything.
+  var UNASKED = ["CENTRE", "LEFT", "RIGHT"];
+
   var CUE_WAIT_MS = 1200;
-
   var ENOUGH = 2;
   var LONGEST_EDGE = 1600;
   var NO_VIDEO_HERE =
-    "Live video is not available on this connection, so take three photographs instead.";
-  var NO_CAMERA = "The camera could not be opened here, so take three photographs instead.";
+    "Live video is not available on this connection, so take the photographs one at a time.";
+  var NO_CAMERA =
+    "The camera could not be opened here, so take the photographs one at a time.";
 
   function byId(id) { return document.getElementById(id); }
 
@@ -340,6 +341,7 @@
   var stream = null;
   var opening = false;
   var capturing = false;
+  var asked = null;
 
   take.addEventListener("click", function () { file.click(); });
 
@@ -352,10 +354,33 @@
     showDocument(chosen);
     person.hidden = false;
     if (mode === null) {
+      requestChallenge();
       if (videoPossible()) { startVideo(); } else { usePhotoMode(NO_VIDEO_HERE); }
     }
     refresh();
   });
+
+  // --- what the person is asked to do -----------------------------------------
+
+  // The checkpoint chooses the movements, not this page. A page that chose its
+  // own could let anyone holding a recording declare that the sequence was
+  // whatever the recording happens to show.
+  function requestChallenge() {
+    asked = null;
+    fetch("/liveness/challenge", { method: "POST" })
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (data) {
+        if (data && data.steps && data.steps.length) {
+          asked = { id: data.challenge_id, steps: data.steps };
+        }
+      })
+      .catch(function () { asked = null; })
+      .then(function () { refresh(); });
+  }
+
+  function steps() { return asked ? asked.steps : UNASKED; }
+
+  function wanted() { return steps().length; }
 
   // --- the person, from live video --------------------------------------------
 
@@ -422,6 +447,7 @@
     capturing = true;
     clearFrames();
     refresh();
+    var order = steps();
     var step = 0;
 
     function next() {
@@ -430,15 +456,15 @@
         refresh();
         return;
       }
-      if (step >= CUES.length) {
+      if (step >= order.length) {
         capturing = false;
         stopCamera();
         live.hidden = true;
         refresh();
         return;
       }
-      prompt.textContent = CUES[step];
-      videoStart.textContent = "Taking photograph " + (step + 1) + " of " + CUES.length;
+      prompt.textContent = CUES[order[step]];
+      videoStart.textContent = "Taking photograph " + (step + 1) + " of " + order.length;
       setTimeout(function () {
         grab().then(function (photograph) {
           if (photograph && mode === "video") { addFrame(photograph); }
@@ -461,7 +487,7 @@
     return new Promise(function (resolve) { canvas.toBlob(resolve, "image/jpeg", 0.9); });
   }
 
-  // --- the person, from three photographs -------------------------------------
+  // --- the person, one photograph at a time -----------------------------------
 
   function usePhotoMode(note) {
     stopCamera();
@@ -481,7 +507,7 @@
   face.addEventListener("change", function () {
     var picked = face.files && face.files[0] ? face.files[0] : null;
     face.value = "";
-    if (!picked || frames.length >= PROMPTS.length) { return; }
+    if (!picked || frames.length >= wanted()) { return; }
     shrinking = true;
     faceTake.disabled = true;
     refresh();
@@ -553,11 +579,12 @@
 
   function refresh() {
     var taken = frames.length;
+    var order = steps();
 
     if (mode === "video") {
       if (!capturing) {
-        if (taken >= CUES.length) {
-          prompt.textContent = "All " + CUES.length + " photographs taken.";
+        if (taken >= order.length) {
+          prompt.textContent = "All " + order.length + " photographs taken.";
         } else if (opening) {
           prompt.textContent = "Opening the camera...";
         } else if (!stream) {
@@ -569,17 +596,17 @@
         }
         videoStart.textContent = stream ? "Start" : "Turn the camera on";
       }
-      videoStart.hidden = !capturing && taken >= CUES.length;
+      videoStart.hidden = !capturing && taken >= order.length;
       videoStart.disabled = capturing || opening || (stream !== null && !live.videoWidth);
-      usePhotos.hidden = capturing || taken >= CUES.length;
+      usePhotos.hidden = capturing || taken >= order.length;
     } else if (mode === "photos") {
-      if (taken < PROMPTS.length) {
-        prompt.textContent = PROMPTS[taken];
-        faceTake.textContent = "Take photograph " + (taken + 1) + " of " + PROMPTS.length;
+      if (taken < order.length) {
+        prompt.textContent = PROMPTS[order[taken]];
+        faceTake.textContent = "Take photograph " + (taken + 1) + " of " + order.length;
         faceTake.hidden = false;
         faceTake.classList.toggle("secondary", taken >= ENOUGH);
       } else {
-        prompt.textContent = "All " + PROMPTS.length + " photographs taken.";
+        prompt.textContent = "All " + order.length + " photographs taken.";
         faceTake.hidden = true;
       }
     }
@@ -600,10 +627,11 @@
   }
 
   // Once a screening is sent the page has no further use for the photographs,
-  // and the camera is switched off.
+  // the camera is switched off, and the next document gets a new challenge.
   function forget() {
     stopCamera();
     mode = null;
+    asked = null;
     videoMode.hidden = true;
     photoMode.hidden = true;
     live.hidden = false;
@@ -630,6 +658,7 @@
     frames.forEach(function (photograph, index) {
       body.append("live_capture", photograph, "person-" + (index + 1) + ".jpg");
     });
+    if (asked && asked.id) { body.append("challenge_id", asked.id); }
     forget();
 
     // A refusal from the checkpoint carries its own sentence. Anything else means

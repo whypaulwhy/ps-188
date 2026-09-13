@@ -27,6 +27,7 @@ import time
 
 from api.settings import Settings
 from core.contracts import (
+    ChallengeStep,
     DocumentType,
     Evidence,
     Provenance,
@@ -46,6 +47,7 @@ from detectors.rung1_deterministic import (
     mrz_checkdigits,
 )
 from detectors.rung2_inference import (
+    challenge_response,
     face_match,
     metadata_forensics,
     pad_liveness,
@@ -121,6 +123,7 @@ def assemble(deployment: Deployment) -> tuple[Detector, ...]:
         pdf_structure.build(),
         face_match.build(),
         pad_liveness.build(),
+        challenge_response.build(),
     ]
     if deployment.settings.hash_key is not None:
         key = deployment.settings.hash_key
@@ -184,6 +187,7 @@ def screen(
     decided_at: datetime.datetime,
     declared_type: DocumentType = DocumentType.UNRECOGNISED,
     live_captures: tuple[tuple[bytes, str], ...] = (),
+    liveness_challenge: tuple[ChallengeStep, ...] = (),
 ) -> tuple[Subject, Verdict]:
     """Screen one capture and resolve it into a verdict.
 
@@ -196,6 +200,8 @@ def screen(
         declared_type: What the document claims to be, when that is known.
         live_captures: Photographs of the person presenting it, each with its
             media type, in the order they were taken.
+        liveness_challenge: What the person was asked to do while those
+            photographs were taken. Empty when nothing was asked.
 
     Returns:
         The extracted subject and the verdict. Never raises on account of the
@@ -207,6 +213,7 @@ def screen(
         provenance=provenance,
         declared_type=declared_type,
         live_captures=live_captures,
+        liveness_challenge=liveness_challenge,
     )
     evidence = run_detectors(assemble(deployment), subject)
     verdict = resolve(evidence, provenance=provenance, decided_at=decided_at)

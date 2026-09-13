@@ -45,6 +45,19 @@ LIVE_CAPTURE_ROLE: Final[str] = "live_capture"
 """A photograph of the person presenting the document, taken at the checkpoint."""
 
 
+class ChallengeStep(StrEnum):
+    """One movement the person was asked to make while being photographed.
+
+    Left and right are the person's own, not the camera's. A checkpoint asks for
+    a sequence of these, chosen after the screening begins, so that a recording
+    made in advance cannot know what will be asked.
+    """
+
+    CENTRE = "CENTRE"
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+
+
 class DocumentType(StrEnum):
     """What a presented document claims to be.
 
@@ -176,6 +189,14 @@ class Subject(BaseModel):
     A QR code that would not decode, a strip that was cut off, a portrait that
     could not be located. These reach the officer, so a detector reporting
     `NOT_APPLICABLE` because a zone is missing has a reason to quote.
+    """
+
+    liveness_challenge: tuple[ChallengeStep, ...] = ()
+    """What the person was asked to do while the photographs were taken.
+
+    Empty when nothing was asked, which a detector reports as a check it could
+    not make rather than one that passed. It is carried here because a detector
+    is handed what it needs and never fetches anything itself.
     """
 
     @field_validator("zones")

@@ -26,7 +26,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.contracts import Decision, Finding, Verdict
+from core.contracts import ChallengeStep, Decision, Finding, Verdict
 from db.recording import CaseView
 
 
@@ -137,6 +137,21 @@ class ConsistencyOut(BaseModel):
     new_size: int
     proof: tuple[str, ...]
     root: str
+
+
+class ChallengeOut(BaseModel):
+    """The movements a person will be asked to make, and what answers them.
+
+    The sequence is chosen by the checkpoint rather than by the device. A device
+    that chose its own could declare that a recording had done whatever the
+    recording happens to show.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    challenge_id: str
+    steps: tuple[ChallengeStep, ...]
+    expires_at: datetime.datetime
 
 
 class HealthOut(BaseModel):

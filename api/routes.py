@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from api.deps import Context, get_context, get_session, new_case_id
 from api.intake import record_capture
 from api.schemas import (
+    ChallengeOut,
     CheckpointOut,
     ConsistencyOut,
     HealthOut,
@@ -85,6 +86,26 @@ def health(
     )
 
 
+@router.post(
+    "/liveness/challenge", response_model=ChallengeOut, status_code=status.HTTP_201_CREATED
+)
+async def issue_challenge(context: Context = Depends(get_context)) -> ChallengeOut:
+    """Hand out the movements to ask the person for, in an order chosen here.
+
+    A recording of the person made in advance cannot know what will be asked.
+    The identifier answers exactly one screening: one that is unknown, already
+    used or too old counts as no challenge at all, which the challenge check
+    reports as something it could not establish rather than something that
+    passed.
+    """
+    challenge = context.challenges.issue(now=_now())
+    return ChallengeOut(
+        challenge_id=challenge.challenge_id,
+        steps=challenge.steps,
+        expires_at=challenge.expires_at(),
+    )
+
+
 @router.post("/screenings", response_model=ScreeningOut, status_code=status.HTTP_201_CREATED)
 async def submit_screening(
     capture: UploadFile = File(..., description="The document image or file, as captured."),
@@ -98,6 +119,13 @@ async def submit_screening(
     ),
     declared_type: str = Form(
         DocumentType.UNRECOGNISED.value, description="What the document claims to be."
+    ),
+    challenge_id: str | None = Form(
+        None,
+        description=(
+            "The identifier of the challenge this checkpoint issued, so that what the "
+            "person was asked to do can be compared with what the photographs show."
+        ),
     ),
     context: Context = Depends(get_context),
     session: Session = Depends(get_session),
@@ -142,6 +170,7 @@ async def submit_screening(
             media_type=capture.content_type,
             declared_type=document_type,
             live_captures=tuple(people),
+            liveness_challenge=context.challenges.claim(challenge_id, now=now),
         )
     except RecordingError as error:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(error)) from error

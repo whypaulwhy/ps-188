@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from api.screening import Deployment, screen
 from api.settings import Settings
-from core.contracts import DocumentType, Provenance, Subject, Verdict
+from core.contracts import ChallengeStep, DocumentType, Provenance, Subject, Verdict
 from db.recording import record_screening
 
 OCTET_STREAM: str = "application/octet-stream"
@@ -53,6 +53,7 @@ def record_capture(
     media_type: str | None = None,
     declared_type: DocumentType = DocumentType.UNRECOGNISED,
     live_captures: tuple[tuple[bytes, str | None], ...] = (),
+    liveness_challenge: tuple[ChallengeStep, ...] = (),
 ) -> Intake:
     """Screen one capture and record it, in the order every route must use.
 
@@ -74,6 +75,9 @@ def record_capture(
             with the media type the sender stated, in the order they were
             taken. They reach the face checks and are not stored; what is
             recorded is the verdict, exactly as for the document itself.
+        liveness_challenge: What the person was asked to do while those
+            photographs were taken. Empty when nothing was asked, which the
+            challenge check reports rather than passing over.
 
     Returns:
         The case identifier, the subject and the verdict.
@@ -100,6 +104,7 @@ def record_capture(
         live_captures=tuple(
             (photograph, stated or OCTET_STREAM) for photograph, stated in live_captures
         ),
+        liveness_challenge=liveness_challenge,
     )
     record_screening(
         session,

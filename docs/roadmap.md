@@ -1296,3 +1296,67 @@ camera can still pass it; the officer wording already says so.
 **Exit criteria.** Where the browser allows live video, the person step takes
 four photographs on cue and switches the camera off; where it does not, the
 three photographs remain; and nothing but still photographs leaves the page.
+
+---
+
+## Phase 21 — A challenge the recording cannot know
+
+Phases 17 to 20 built a liveness check that measures whether a face changes
+shape between photographs. A **recording** of the person does change shape,
+because the recorded head did, so a video played to the camera passed. This
+phase asks the person to do something the recording could not have known about.
+
+- **The checkpoint chooses the movements, not the device.** `POST
+  /liveness/challenge` returns four steps — face-on first, then movements that
+  never repeat twice in a row — and an identifier held in memory, answered once,
+  and refused after three minutes (`api/challenge.py`). A page that chose its
+  own sequence would let anyone holding a recording declare the sequence was
+  whatever the recording happens to show.
+- **Never twice the same movement** is not cosmetic: two photographs of a head
+  in the same place are exactly what the liveness check beside it reads as a
+  picture held up to the camera, so an honest person following instructions
+  would be escalated.
+- **The capture page asks for one** when the person step opens, shows those
+  instructions in order, and sends the identifier with the photographs. When the
+  request fails the page still works with its own fixed instructions, and the
+  screening says the person was asked nothing.
+- **`rung2.challenge_response`** reads which way the head is turned in each
+  photograph and compares it with what was asked. Like everything on the rung it
+  can only send a case to a person. `Subject.liveness_challenge` carries what was
+  asked, handed to the detector as data.
+
+### How a direction is read
+
+The nose's offset from the midpoint of the eyes, divided by the **width of the
+face**. The first attempt divided by the distance between the eyes, which is
+unstable: in a near-profile photograph the eyes almost coincide and the ratio
+explodes. Dividing by the face width stayed sane on the same photograph.
+
+Which sign means which way was **confirmed against photographs whose subject
+said which way he had turned**, rather than reasoned about: a head turned to the
+person's own left puts the nose toward the right-hand side of the picture. A
+face-on photograph measured about zero, and turns a few tenths either side. No
+figure from that check is recorded here; the bands are uncalibrated, and the
+rates at which this escalates an honest person or misses a recording are TBD.
+
+### Verified
+
+- `make check`: **1909 passed**.
+- In a desktop browser against a running checkpoint, with the camera replaced by
+  a generated picture: the checkpoint issued face-on, right, left, face-on; the
+  page displayed exactly those four instructions in that order; four photographs
+  were taken; and the screening carried the identifier with them. That
+  checkpoint had no face models installed, so the detector's own branches are
+  covered by tests rather than by that run.
+- **Not verified: a real face, and a real recording held up to the camera.**
+
+### What it does not defeat
+
+Someone holding clips of every movement who plays the right one on each cue, and
+a live puppet of the person's face. The sequence is one of eight, so a blind
+guess succeeds one time in eight. None of that is hidden from the officer: the
+wording says a person who moved too little looks the same as a recording.
+
+**Exit criteria.** A screening that quotes a challenge is compared with the
+movements that challenge asked for; one challenge answers exactly one screening;
+and a screening without one says the person was asked nothing.

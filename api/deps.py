@@ -21,6 +21,7 @@ from typing import Final
 from fastapi import Request
 from sqlalchemy.orm import Session, sessionmaker
 
+from api.challenge import ChallengeStore
 from api.intake import Intake, record_capture
 from api.screening import Deployment
 from api.settings import Settings
@@ -43,6 +44,8 @@ class Context:
     settings: Settings
     deployment: Deployment
     session_factory: sessionmaker[Session]
+    challenges: ChallengeStore
+    """What each device was asked to have the person do, until it answers or gives up."""
 
     def screen_capture(
         self,
@@ -105,6 +108,7 @@ def build_context(settings: Settings, *, create: bool = False) -> Context:
         settings=settings,
         deployment=Deployment(settings=settings, trust_store=settings.trust_store),
         session_factory=create_session_factory(settings.database_url, create=create),
+        challenges=ChallengeStore(),
     )
 
 

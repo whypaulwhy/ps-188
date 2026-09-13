@@ -142,6 +142,14 @@ Photograph the document **flat on the table, with no real face in the frame.**
 The face check uses the largest face in the document photograph, so a card held
 up in front of somebody compares them with themselves.
 
+**The movements are chosen by the checkpoint, once the screening has begun.**
+That is what makes a recording fail: it cannot know what it will be asked. If
+you want to show the attack, play a video of somebody turning their head and
+hold it up to the camera. The checkpoint asks for its own order, the recording
+follows its own, and the case is sent to an officer saying so. Say plainly what
+this does not defeat: someone holding clips of every movement who plays the
+right one on each cue.
+
 ### Live video on the phone: a USB cable
 
 A phone browser allows live video only over a secure connection, and plain
@@ -194,11 +202,11 @@ this reason. Turn the server off afterwards.
 Only these. Everything else is invented, whoever says it.
 
 **Counts of code and tests** — safe in any room, and not performance claims:
-1,865 tests passing; 100% branch coverage on `core/`; 5 architecture
-contracts enforced in CI; 7 architecture decision records; 15 detectors, of
-which 13 are assembled at a checkpoint that holds no hashing key; 11 accepted document
-types, of which only 2 can ever reach `CLEARED`. These were last recounted in
-phase 19. Recount before saying them if anything has changed since.
+1,909 tests passing; 100% branch coverage on `core/`; 5 architecture
+contracts enforced in CI; 7 architecture decision records; 16 detectors, of
+which 14 are assembled at a checkpoint that holds no hashing key; 11 accepted
+document types, of which only 2 can ever reach `CLEARED`. These were last
+recounted in phase 21. Recount before saying them if anything has changed since.
 
 **The one evaluation that exists**, `eval/reports/synthetic-utopia-v1`, on
 documents this repository generated: the classical tamper detector escalated 0%

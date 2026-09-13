@@ -27,6 +27,7 @@ from core.contracts import (
     DOCUMENT_ROLE,
     LIVE_CAPTURE_ROLE,
     Artefact,
+    ChallengeStep,
     DecodedCode,
     DocumentType,
     Provenance,
@@ -53,6 +54,7 @@ def build_subject(
     provenance: Provenance,
     declared_type: DocumentType = DocumentType.UNRECOGNISED,
     live_captures: tuple[tuple[bytes, str], ...] = (),
+    liveness_challenge: tuple[ChallengeStep, ...] = (),
 ) -> Subject:
     """Extract everything obtainable from one capture.
 
@@ -65,6 +67,8 @@ def build_subject(
             with its media type, in the order they were taken. They travel
             after the document for the face checks. Nothing is read from them:
             a code or a strip in a photograph of a person is not the document's.
+        liveness_challenge: What the person was asked to do while those
+            photographs were taken, in order. Empty when nothing was asked.
 
     Returns:
         The subject. Never raises: a capture that cannot be opened at all comes
@@ -92,6 +96,7 @@ def build_subject(
         return Subject(
             provenance=provenance,
             declared_type=declared_type,
+            liveness_challenge=liveness_challenge,
             artefacts=(document, *people),
             not_extracted=(UNREADABLE_IMAGE,),
         )
@@ -130,6 +135,7 @@ def build_subject(
     return Subject(
         provenance=provenance,
         declared_type=declared_type,
+        liveness_challenge=liveness_challenge,
         artefacts=(document, *people),
         zones=tuple(zones),
         codes=tuple(codes),

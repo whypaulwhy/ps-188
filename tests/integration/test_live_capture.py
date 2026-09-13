@@ -1,13 +1,17 @@
 """Photographs of the person, from the page that takes them to the checks that read them.
 
-Phase 19 gave the face checks something to read. Two properties are pinned here.
+Phase 19 gave the face checks something to read. Three properties are pinned here.
 
 **The photographs arrive, in the order they were taken.** The face engine is
 replaced by a stand-in for this. There are no faces in this repository, by
 decision, so what is tested is the wiring and not recognition.
 
+**What the checkpoint asked for reaches the check that verifies it.** A screening
+that quotes a challenge is compared with the movements that challenge asked for,
+and one challenge answers exactly one screening.
+
 **Sending more files cannot change which file the document checks read.** Before
-this phase a screening carried one file, so "the first PDF" and "the document"
+phase 19 a screening carried one file, so "the first PDF" and "the document"
 were the same thing. With photographs of the person alongside, they are not: a
 signed file sent as a photograph of the person would have been verified as
 though it were the document, and could have cleared the case.
@@ -25,10 +29,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.app import app_for
+from api.challenge import STEPS
 from api.screening import Deployment, screen
 from api.settings import Settings
-from core.contracts import Decision, Provenance, Result, Verdict
-from detectors.rung2_inference import face_engine, face_match, pad_liveness
+from core.contracts import ChallengeStep, Decision, Provenance, Result, Verdict
+from detectors.rung2_inference import challenge_response, face_engine, face_match, pad_liveness
 from tests.golden.harness import CASES_DIR, FIXTURE_CAPTURED_AT, GoldenCase, load_case
 
 CHECKPOINT_ID: Final[str] = "raxaul-03"
@@ -37,6 +42,8 @@ DOCUMENT: Final[bytes] = b"this stands for a photograph of a document"
 LOOKING: Final[bytes] = b"the person, looking at the camera"
 TURNED: Final[bytes] = b"the person, head turned a little"
 STRANGER: Final[bytes] = b"somebody else entirely"
+THEIR_LEFT: Final[bytes] = b"the person, turned to their left"
+THEIR_RIGHT: Final[bytes] = b"the person, turned to their right"
 
 EYES_NOSE_MOUTH: Final[tuple[tuple[float, float], ...]] = (
     (40.0, 40.0),
@@ -67,13 +74,41 @@ def _face(
     )
 
 
+def _turned(offset: float) -> face_engine.DetectedFace:
+    """Return the holder's face with the nose that far across the face, as a turn."""
+    points = (
+        (40.0, 40.0),
+        (80.0, 40.0),
+        (60.0 + offset * 120.0, 60.0),
+        (45.0, 80.0),
+        (75.0, 80.0),
+    )
+    return _face(points, HOLDER)
+
+
 FACES: Final[dict[bytes, tuple[face_engine.DetectedFace, ...]]] = {
     DOCUMENT: (_face(EYES_NOSE_MOUTH, HOLDER),),
     LOOKING: (_face(EYES_NOSE_MOUTH, HOLDER),),
     TURNED: (_face(NOSE_MOVED, HOLDER),),
     STRANGER: (_face(EYES_NOSE_MOUTH, SOMEONE_ELSE),),
+    THEIR_LEFT: (_turned(0.25),),
+    THEIR_RIGHT: (_turned(-0.25),),
 }
 """What the stand-in engine finds in each file. The portrait on the document is the holder."""
+
+STEP_PHOTOGRAPHS: Final[dict[str, bytes]] = {
+    ChallengeStep.CENTRE.value: LOOKING,
+    ChallengeStep.LEFT.value: THEIR_LEFT,
+    ChallengeStep.RIGHT.value: THEIR_RIGHT,
+}
+"""A photograph that answers each movement a challenge can ask for."""
+
+THE_OTHER_WAY: Final[dict[str, str]] = {
+    ChallengeStep.CENTRE.value: ChallengeStep.CENTRE.value,
+    ChallengeStep.LEFT.value: ChallengeStep.RIGHT.value,
+    ChallengeStep.RIGHT.value: ChallengeStep.LEFT.value,
+}
+"""Turning the wrong way, which is what a recording of an earlier crossing does."""
 
 SIGNED: Final[GoldenCase] = load_case(CASES_DIR / "pdf-signature-valid")
 """A signed PDF that verifies against the anchor its golden case names."""
@@ -119,12 +154,28 @@ def document_and(*photographs: bytes) -> list[tuple[str, tuple[str, bytes, str]]
     return files
 
 
-def screened_over_http(client: TestClient, *photographs: bytes) -> dict[str, Any]:
+def screened_over_http(
+    client: TestClient, *photographs: bytes, challenge_id: str | None = None
+) -> dict[str, Any]:
     """Submit a document and photographs of the person, and return the case."""
-    response = client.post("/screenings", files=document_and(*photographs))
+    response = client.post(
+        "/screenings",
+        files=document_and(*photographs),
+        data={"challenge_id": challenge_id} if challenge_id else None,
+    )
     assert response.status_code == 201, response.text
     body: dict[str, Any] = response.json()
     return body
+
+
+def answering(client: TestClient, *, correctly: bool = True) -> dict[str, Any]:
+    """Ask for a challenge, then answer it with photographs that do or do not match."""
+    challenge = client.post("/liveness/challenge").json()
+    asked = challenge["steps"]
+    order = asked if correctly else [THE_OTHER_WAY[step] for step in asked]
+    return screened_over_http(
+        client, *[STEP_PHOTOGRAPHS[step] for step in order], challenge_id=challenge["challenge_id"]
+    )
 
 
 def found(body: dict[str, Any]) -> list[str]:
@@ -212,6 +263,51 @@ def test_an_oversized_photograph_is_refused(settings: Settings) -> None:
     assert response.status_code == 413
 
 
+# What the checkpoint asked for
+
+
+def test_a_challenge_asks_for_movements_starting_face_on(client: TestClient) -> None:
+    """The first photograph is the one the face comparison uses."""
+    body = client.post("/liveness/challenge").json()
+
+    assert len(body["steps"]) == STEPS
+    assert body["steps"][0] == ChallengeStep.CENTRE.value
+    assert body["challenge_id"]
+
+
+def test_doing_what_was_asked_is_reported(client: TestClient, stand_in_faces: None) -> None:
+    """The photographs answer the movements this checkpoint chose for this crossing."""
+    body = answering(client, correctly=True)
+
+    assert any("That is what the photographs show" in line for line in found(body))
+
+
+def test_doing_something_else_is_escalated(client: TestClient, stand_in_faces: None) -> None:
+    """The attack: a recording that turns the way it turned when it was recorded."""
+    body = answering(client, correctly=False)
+
+    assert body["decision"] == Decision.MANUAL_REVIEW.value
+    assert any("The photographs do not show that" in line for line in found(body))
+
+
+def test_photographs_with_no_challenge_say_so(client: TestClient, stand_in_faces: None) -> None:
+    """Sending photographs without asking for a challenge establishes nothing."""
+    body = screened_over_http(client, LOOKING, TURNED)
+
+    assert challenge_response.NOT_ASKED in body["not_checked"]
+
+
+def test_one_challenge_answers_one_screening(client: TestClient, stand_in_faces: None) -> None:
+    """A captured identifier must be worth nothing the second time."""
+    challenge = client.post("/liveness/challenge").json()
+    photographs = [STEP_PHOTOGRAPHS[step] for step in challenge["steps"]]
+
+    screened_over_http(client, *photographs, challenge_id=challenge["challenge_id"])
+    again = screened_over_http(client, *photographs, challenge_id=challenge["challenge_id"])
+
+    assert challenge_response.NOT_ASKED in again["not_checked"]
+
+
 # The console
 
 
@@ -224,15 +320,24 @@ def test_the_capture_page_photographs_the_person(client: TestClient) -> None:
     assert "live_capture" in text
 
 
+def test_the_capture_page_asks_the_checkpoint_what_to_ask_for(client: TestClient) -> None:
+    """The page must not invent the movements; a recording could then match them."""
+    text = client.get("/console/capture").text
+
+    assert "/liveness/challenge" in text
+    assert "Turn your head to your left." in text
+
+
 def test_the_capture_page_takes_the_person_from_live_video_where_it_can(
     client: TestClient,
 ) -> None:
-    """Live video where the browser allows it, three photographs wherever it does not."""
-    text = client.get("/console/capture").text
+    """Live video where the browser allows it, photographs one at a time where it does not."""
+    # Whitespace collapsed: a sentence in the page may be wrapped across lines.
+    text = " ".join(client.get("/console/capture").text.split())
 
     assert "getUserMedia" in text
     assert 'id="live"' in text
-    assert "Take three photographs instead" in text
+    assert "Photograph them one at a time instead" in text
     assert "Only still photographs are sent" in text
 
 
